@@ -28,6 +28,7 @@ import { toast } from '@/components/ui/use-toast';
 import { PrefetchKind } from 'next/dist/client/components/router-reducer/router-reducer-types';
 import Image from 'next/image';
 import { getClientBranding } from '../client-branding';
+import { isLocalMode } from '@/lib/local-mode';
 
 const iconStyles = 'mr-2 h-5 w-5';
 
@@ -177,22 +178,24 @@ const UserMenu = ({
               </div>
             </DropdownMenuTrigger>
             <DropdownMenuContent className="ml-12 w-36">
-              {menuItems.map(({ icon, href = '', label }) => (
-                <DropdownMenuItem
-                  key={label}
-                  data-testid={`user-menu-item-${label.toLowerCase().replace(/\s+/g, '-')}`}
-                  className={cn('cursor-pointer', {
-                    'bg-[#E1E3F2] dark:bg-slate-800': forceDropdownOpen && label === 'API Keys',
-                  })}
-                  onMouseEnter={() => {
-                    router.prefetch(href, { kind: PrefetchKind.FULL });
-                  }}
-                  onClick={() => router.push(href)}
-                >
-                  {icon}
-                  <span>{label}</span>
-                </DropdownMenuItem>
-              ))}
+              {menuItems
+                .filter((item) => !isLocalMode || item.href !== '/settings/organization')
+                .map(({ icon, href = '', label }) => (
+                  <DropdownMenuItem
+                    key={label}
+                    data-testid={`user-menu-item-${label.toLowerCase().replace(/\s+/g, '-')}`}
+                    className={cn('cursor-pointer', {
+                      'bg-[#E1E3F2] dark:bg-slate-800': forceDropdownOpen && label === 'API Keys',
+                    })}
+                    onMouseEnter={() => {
+                      router.prefetch(href, { kind: PrefetchKind.FULL });
+                    }}
+                    onClick={() => router.push(href)}
+                  >
+                    {icon}
+                    <span>{label}</span>
+                  </DropdownMenuItem>
+                ))}
               <Separator className="mt-1" />
               <DropdownMenuItem
                 className="mt-1 cursor-pointer"

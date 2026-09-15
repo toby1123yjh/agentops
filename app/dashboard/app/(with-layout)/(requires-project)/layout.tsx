@@ -21,7 +21,7 @@ async function fetchServerSideApi<T = any>(endpoint: string): Promise<T> {
     throw new Error('User is not authenticated (no session cookie found server-side).');
   }
 
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+  const apiUrl = process.env.AGENTOPS_INTERNAL_API_URL || process.env.NEXT_PUBLIC_API_URL;
   if (!apiUrl) {
     throw new Error('NEXT_PUBLIC_API_URL environment variable is not set.');
   }
@@ -31,6 +31,7 @@ async function fetchServerSideApi<T = any>(endpoint: string): Promise<T> {
     headers: {
       // Send session_id as Bearer token
       Authorization: `Bearer ${sessionId}`,
+      Cookie: `session_id=${encodeURIComponent(sessionId)}`,
       'Content-Type': 'application/json',
     },
     cache: 'no-store', // Prevent caching sensitive data by default

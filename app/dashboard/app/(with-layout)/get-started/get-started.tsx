@@ -23,6 +23,7 @@ import { OsType } from './types';
 import StartingFresh from './components/StartingFresh';
 import ExistingCodebase from './components/ExistingCodebase';
 import ApiKeySection from './components/ApiKeySection';
+import { isLocalMode } from '@/lib/local-mode';
 
 export default function EmptyProject() {
   const { selectedProject } = useProject();
@@ -140,7 +141,7 @@ export default function EmptyProject() {
       };
 
       try {
-        await axios.post('https://submit-form.com/kwomKFAMl', formData);
+        if (!isLocalMode) await axios.post('https://submit-form.com/kwomKFAMl', formData);
       } catch (formError) {
         console.warn('Failed to submit form data:', formError);
         // Continue even if form submission fails
@@ -161,6 +162,40 @@ export default function EmptyProject() {
       setIsVerifying(false);
       setVerificationAttempts((prev) => prev + 1);
     }
+  }
+
+  if (isLocalMode) {
+    return (
+      <div className="mx-auto max-w-3xl space-y-6 p-8">
+        <h1 className="text-2xl font-semibold">接入本地 AgentOps</h1>
+        <p>在项目设置中复制 API Key，并为 SDK 配置以下环境变量。不要使用 SDK 默认云端地址。</p>
+        <pre className="overflow-x-auto rounded-lg border bg-muted p-4 text-sm">
+          {`AGENTOPS_API_KEY=<本地项目 API Key>
+AGENTOPS_API_ENDPOINT=http://localhost:8000
+AGENTOPS_EXPORTER_ENDPOINT=http://localhost:4318/v1/traces
+AGENTOPS_APP_URL=http://localhost:3000`}
+        </pre>
+        <p className="text-sm text-muted-foreground">
+          首次验证只发送测试 Trace / Span。文件和日志附件上传尚未支持；请关闭这些可选上传能力。
+        </p>
+        <div className="flex gap-3">
+          <Button asChild>
+            <Link href="/settings/projects">查看 API Key</Link>
+          </Button>
+          <Button onClick={checkForSessions} disabled={isVerifying || !selectedProject}>
+            {isVerifying ? '检查中…' : '检查本地 Trace'}
+          </Button>
+        </div>
+        {hasEvents && (
+          <Link href="/traces" className="underline">
+            已收到 Trace，查看记录
+          </Link>
+        )}
+        {!hasEvents && verificationAttempts > 0 && (
+          <p>尚未收到 Trace，请检查 SDK 端点和采集器日志。</p>
+        )}
+      </div>
+    );
   }
 
   if (currentStep === 0) {

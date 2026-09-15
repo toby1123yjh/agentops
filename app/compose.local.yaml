@@ -1,0 +1,113 @@
+name: agentops-local
+
+x-api-environment: &api-environment
+  AGENTOPS_LOCAL_MODE: 'true'
+  PROTOCOL: http
+  API_DOMAIN: localhost:8000
+  APP_DOMAIN: localhost:3000
+  POSTGRES_HOST: postgres
+  POSTGRES_PORT: '5432'
+  POSTGRES_DB: agentops_local
+  POSTGRES_USER: agentops
+  POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env.local-mode}
+  AUTH_COOKIE_SECRET: ${AUTH_COOKIE_SECRET:?Set AUTH_COOKIE_SECRET}
+  JWT_SECRET_KEY: ${JWT_SECRET_KEY:?Set JWT_SECRET_KEY}
+  CLICKHOUSE_HOST: clickhouse
+  CLICKHOUSE_PORT: '8123'
+  CLICKHOUSE_USER: agentops
+  CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:?Set CLICKHOUSE_PASSWORD}
+  CLICKHOUSE_DATABASE: otel_2
+  CLICKHOUSE_SECURE: 'false'
+  SENTRY_DSN: ''
+
+services:
+  postgres:
+    image: postgres:15-bookworm
+    environment:
+      POSTGRES_DB: agentops_local
+      POSTGRES_USER: agentops
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
+    volumes:
+      - local-postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U agentops -d agentops_local']
+      interval: 5s
+      retries: 20
+
+  clickhouse:
+    image: clickhouse/clickhouse-server:24.12
+    environment:
+      CLICKHOUSE_DB: otel_2
+      CLICKHOUSE_USER: agentops
+      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:?Set CLICKHOUSE_PASSWORD}
+      CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: '1'
+    volumes:
+      - local-clickhouse:/var/lib/clickhouse
+    healthcheck:
+      test: ['CMD', 'wget', '--spider', '-q', 'http://localhost:8123/ping']
+      interval: 5s
+      retries: 20
+
+  initialize:
+    build:
+      context: .
+      dockerfile: local/Dockerfile.api
+    environment:
+      <<: *api-environment
+      AGENTOPS_LOCAL_EMAIL: ${AGENTOPS_LOCAL_EMAIL:?Set AGENTOPS_LOCAL_EMAIL}
+      AGENTOPS_LOCAL_PASSWORD: ${AGENTOPS_LOCAL_PASSWORD:?Set AGENTOPS_LOCAL_PASSWORD}
+    command: ['python', '-m', 'agentops.local_bootstrap']
+    depends_on:
+      postgres:
+        condition: service_healthy
+      clickhouse:
+        condition: service_healthy
+
+  api:
+    build:
+      context: .
+      dockerfile: local/Dockerfile.api
+    environment: *api-environment
+    ports:
+      - '127.0.0.1:8000:8000'
+    depends_on:
+      initialize:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ['CMD', 'python', '-c', "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 10s
+      retries: 10
+
+  otelcollector:
+    build:
+      context: ./opentelemetry-collector
+      dockerfile: Dockerfile
+    environment:
+      CLICKHOUSE_ENDPOINT: http://clickhouse:8123
+      CLICKHOUSE_USERNAME: agentops
+      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:?Set CLICKHOUSE_PASSWORD}
+      CLICKHOUSE_DATABASE: otel_2
+      TRACES_TABLE_NAME: otel_traces
+      LOGS_TABLE_NAME: otel_logs
+      CLICKHOUSE_TTL: 180d
+      CLICKHOUSE_TIMEOUT: 10s
+      JWT_SECRET: ${JWT_SECRET_KEY:?Set JWT_SECRET_KEY}
+    ports:
+      - '127.0.0.1:4318:4318'
+    depends_on:
+      initialize:
+        condition: service_completed_successfully
+
+  dashboard:
+    build:
+      context: ./dashboard
+      dockerfile: ../local/Dockerfile.dashboard
+    ports:
+      - '127.0.0.1:3000:3000'
+    depends_on:
+      api:
+        condition: service_healthy
+
+volumes:
+  local-postgres:
+  local-clickhouse:

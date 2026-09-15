@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from uuid import uuid4, UUID
 
 from agentops.common import cache
+from agentops.common.local_mode import LOCAL_MODE
 from .environment import AUTH_SESSION_EXPIRY
 
 
@@ -53,6 +54,10 @@ class Session:
             Optional[Session]: Session object if found, None otherwise
         """
         session_id = str(session_id)
+        if LOCAL_MODE:
+            from agentops.local_auth import get_session_user
+            user_id = get_session_user(session_id)
+            return cls(UUID(session_id), user_id) if user_id else None
         if user_id := cache.get(_make_key(session_id)):
             return cls(
                 session_id=UUID(session_id),
@@ -73,6 +78,10 @@ class Session:
             Session: The newly created session
         """
         session = cls(uuid4(), user_id)
+        if LOCAL_MODE:
+            from agentops.local_auth import create_session
+            create_session(session.session_id, user_id, AUTH_SESSION_EXPIRY)
+            return session
         cache.setex(_make_key(session.session_id), AUTH_SESSION_EXPIRY, str(session.user_id))
         return session
 
@@ -82,6 +91,9 @@ class Session:
 
         Resets the expiry time to AUTH_SESSION_EXPIRY seconds from now.
         """
+        if LOCAL_MODE:
+            from agentops.local_auth import update_session
+            return update_session(self.session_id, AUTH_SESSION_EXPIRY)
         return cache.expire(_make_key(self.session_id), AUTH_SESSION_EXPIRY)
 
     def expire(self) -> None:
@@ -90,4 +102,7 @@ class Session:
 
         Used for logout operations or to invalidate a session.
         """
+        if LOCAL_MODE:
+            from agentops.local_auth import update_session
+            return update_session(self.session_id, None)
         return cache.delete(_make_key(self.session_id))

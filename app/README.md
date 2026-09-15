@@ -1,3 +1,7 @@
+## 无 Supabase 的本地模式
+
+原版 Dashboard 的本地开发模式见 [local/README.md](local/README.md)。使用独立的 `compose.local.yaml`，不要与下方原有 Supabase 部署配置混用。
+
 Restart local stack and verify
 
 - Restart services:

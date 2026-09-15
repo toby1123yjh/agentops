@@ -5,6 +5,7 @@ import { Loading03Icon as Loader2 } from 'hugeicons-react';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 import { cn } from '@/lib/utils';
+import { isLocalMode } from '@/lib/local-mode';
 
 const settingsPages = [
   {
@@ -73,20 +74,22 @@ export default function SettingsLayout({ children }: SettingsLayoutProps) {
       <div className="space-y-4">
         <div className="border-b border-[#DEE0F4]">
           <nav className="flex space-x-8 overflow-x-auto">
-            {settingsPages.map((page) => (
-              <button
-                key={page.id}
-                onClick={() => handleTabChange(page.id)}
-                className={cn(
-                  'flex min-w-0 items-center whitespace-nowrap border-b-2 pb-3 pt-2 text-base font-medium transition-colors',
-                  activeTab === page.id
-                    ? 'border-primary text-primary'
-                    : 'border-transparent text-muted-foreground hover:border-gray-300 hover:text-foreground',
-                )}
-              >
-                <span className="font-medium">{page.title}</span>
-              </button>
-            ))}
+            {settingsPages
+              .filter((page) => !isLocalMode || page.id !== 'organization')
+              .map((page) => (
+                <button
+                  key={page.id}
+                  onClick={() => handleTabChange(page.id)}
+                  className={cn(
+                    'flex min-w-0 items-center whitespace-nowrap border-b-2 pb-3 pt-2 text-base font-medium transition-colors',
+                    activeTab === page.id
+                      ? 'border-primary text-primary'
+                      : 'border-transparent text-muted-foreground hover:border-gray-300 hover:text-foreground',
+                  )}
+                >
+                  <span className="font-medium">{page.title}</span>
+                </button>
+              ))}
           </nav>
         </div>
         <div className="min-h-[400px]">

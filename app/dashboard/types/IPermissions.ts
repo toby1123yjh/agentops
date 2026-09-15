@@ -1,6 +1,7 @@
 // This file will store shared permission-related types and functions.
 
 import { IOrg } from './IOrg'; // Assuming IOrg will also be in dashboard/types or similar
+import { isLocalMode } from '@/lib/local-mode';
 
 export type PremStatus = 'free' | 'pro' | string;
 
@@ -109,6 +110,19 @@ export const getDerivedPermissions = (orgData?: IOrg | null): OrgFeaturePermissi
   if (!orgData || !orgData.prem_status) {
     return defaultFreePermissions; // Fallback if no orgData or prem_status
   }
+
+  if (isLocalMode)
+    return {
+      ...defaultProPermissions,
+      tierName: 'local',
+      projects: { canCreateMultiple: true, maxAllowed: null },
+      usersAndOrgs: { ...defaultFreePermissions.usersAndOrgs, canInviteUsers: false },
+      billingAndUsage: { maxSpansMonthly: null, canViewCostBreakdowns: true },
+      advancedFeatures: {
+        ...defaultFreePermissions.advancedFeatures,
+        canUseCustomAttributes: true,
+      },
+    };
 
   let basePermissions: OrgFeaturePermissions;
   // Normalize the status to lowercase for comparison

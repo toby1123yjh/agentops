@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev --turbo",
+    "dev:local": "cross-env NEXT_PUBLIC_AGENTOPS_LOCAL_MODE=true NEXT_PUBLIC_API_URL=http://localhost:8000 NEXT_PUBLIC_PLAYGROUND=false NEXT_TELEMETRY_DISABLED=1 next dev --hostname 127.0.0.1",
     "dev:cy": "next dev",
     "dev-mobile": "next dev --turbo -H 0.0.0.0",
     "build": "next build",

@@ -1,5 +1,6 @@
 from typing import Optional
-from fastapi import Request, Depends
+from fastapi import Request, Depends, HTTPException
+from agentops.common.local_mode import LOCAL_MODE
 
 from agentops.common.orm import get_orm_session, Session
 
@@ -43,6 +44,8 @@ def update_user(
     assert user, "User not found"
 
     update_dict = body.model_dump(exclude_unset=True, exclude_none=True)
+    if LOCAL_MODE and "email" in update_dict and update_dict["email"] != user.email:
+        raise HTTPException(400, "Changing the local login email is not supported")
     for key, value in update_dict.items():
         setattr(user, key, value)
 

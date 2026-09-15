@@ -17,6 +17,7 @@ import { shouldShowPremiumBanner } from '@/utils/route-helpers';
 import { SubscriptionBadge } from '@/components/ui/subscription-badge';
 import { useUser } from '@/hooks/queries/useUser';
 import { getClientBranding } from '../../client-branding';
+import { isLocalMode } from '@/lib/local-mode';
 
 export function SideNavbar(props: { helpLinks: ILink[]; dataLinks: ILink[] }) {
   const { isExpanded, setIsExpanded } = useSidebar();
@@ -27,7 +28,7 @@ export function SideNavbar(props: { helpLinks: ILink[]; dataLinks: ILink[] }) {
   const clientBranding = getClientBranding(userData?.email ?? undefined);
   const isFoxyUser = !!clientBranding && clientBranding.name === 'FoxyAI';
 
-  const showBanner = shouldShowPremiumBanner(pathname);
+  const showBanner = !isLocalMode && shouldShowPremiumBanner(pathname);
 
   const toggleSidebar = () => {
     setIsExpanded(!isExpanded);

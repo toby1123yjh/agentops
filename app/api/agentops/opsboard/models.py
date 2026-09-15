@@ -20,6 +20,7 @@ from agentops.common.environment import (
 )
 from agentops.common.orm import BaseModel, require_loaded
 from .environment import DEMO_ORG_ID
+from agentops.common.local_mode import LOCAL_MODE
 from sqlalchemy import func
 
 if TYPE_CHECKING:
@@ -130,6 +131,8 @@ class UserModel(BaseModel):
     @property
     def billing_email(self) -> str | None:
         """Get the user's email from Supabase `auth.users` to ensure we use the canonical email."""
+        if LOCAL_MODE:
+            return self.email
         # this performs a lazy load, but it's used infrequently so that's fine
         return self.auth_user.email if self.auth_user else None
 
@@ -184,6 +187,8 @@ class OrgModel(BaseModel):
     @property
     def is_freeplan(self) -> bool:
         """Check if the organization is on a free plan."""
+        if LOCAL_MODE:
+            return False
         return self.prem_status == PremStatus.free
 
     @property

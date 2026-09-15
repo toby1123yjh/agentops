@@ -1,11 +1,12 @@
 import os
+from .local_mode import LOCAL_MODE
 
 # Base URLs and domains
-APP_DOMAIN = os.getenv("APP_DOMAIN", "app.agentops.ai")
-API_DOMAIN = os.getenv("API_DOMAIN", "api.agentops.ai")
+APP_DOMAIN = os.getenv("APP_DOMAIN", "localhost:3000" if LOCAL_MODE else "app.agentops.ai")
+API_DOMAIN = os.getenv("API_DOMAIN", "localhost:8000" if LOCAL_MODE else "api.agentops.ai")
 
 # Protocol - defaults to https but can be overridden for local development
-PROTOCOL = os.getenv("PROTOCOL", "https")
+PROTOCOL = os.getenv("PROTOCOL", "http" if LOCAL_MODE else "https")
 
 # Full base URLs
 APP_URL = f"{PROTOCOL}://{APP_DOMAIN}"
@@ -34,6 +35,15 @@ SUPABASE_DATABASE = os.getenv('SUPABASE_DATABASE')
 SUPABASE_USER = os.getenv('SUPABASE_USER')
 SUPABASE_PASSWORD = os.getenv('SUPABASE_PASSWORD')
 SUPABASE_SSLMODE = os.getenv('SUPABASE_SSLMODE', 'prefer')
+
+# Plain PostgreSQL in local mode; cloud configuration remains unchanged.
+if LOCAL_MODE:
+    SUPABASE_HOST = os.getenv("POSTGRES_HOST", "localhost")
+    SUPABASE_PORT = os.getenv("POSTGRES_PORT", "5432")
+    SUPABASE_DATABASE = os.getenv("POSTGRES_DB", "agentops_local")
+    SUPABASE_USER = os.getenv("POSTGRES_USER", "agentops")
+    SUPABASE_PASSWORD = os.getenv("POSTGRES_PASSWORD")
+    SUPABASE_SSLMODE = os.getenv("POSTGRES_SSLMODE", "disable")
 
 # Supabase allows up to 20 pool connections and 1000 max connections.
 # Since we share connections with other instances (dev, staging) these defaults

@@ -668,7 +668,7 @@ export function MembersList({
                         <p className="text-sm font-medium">Billing Impact:</p>
                         <ul className="space-y-1 text-sm text-muted-foreground">
                           <li>
-                            • You'll stop being charged ${pricePerSeat}/{billingInterval || 'mo'}{' '}
+                            • You&apos;ll stop being charged ${pricePerSeat}/{billingInterval || 'mo'}{' '}
                             for this seat
                           </li>
                           <li>• The change takes effect at your next billing period</li>

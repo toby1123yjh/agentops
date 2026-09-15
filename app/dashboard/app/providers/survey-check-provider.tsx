@@ -14,6 +14,7 @@ export function SurveyCheckProvider({ children }: SurveyCheckProviderProps) {
   const { data: user } = useUser();
 
   useEffect(() => {
+    if (process.env.NEXT_PUBLIC_AGENTOPS_LOCAL_MODE === 'true') return;
     if (
       pathname === '/welcome' ||
       pathname === '/signin' ||

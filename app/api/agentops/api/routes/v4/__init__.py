@@ -2,6 +2,7 @@ from fastapi import APIRouter
 
 from agentops.common.route_config import RouteConfig, register_routes
 from agentops.auth.middleware import AuthenticatedRoute
+from agentops.common.local_mode import LOCAL_MODE
 
 from .metrics.views import ProjectMetricsView
 from .traces.views import TraceListView, TraceDetailView
@@ -60,7 +61,12 @@ route_config: list[RouteConfig] = [
 ]
 
 api_router = APIRouter(route_class=AuthenticatedRoute)
+if LOCAL_MODE:
+    route_config = [route for route in route_config if route.name in {
+        "get_project_metrics", "get_project_traces", "get_trace",
+    }]
 register_routes(api_router, route_config, prefix="/v4")
 router.include_router(api_router)
 
-router.include_router(stripe_webhooks_router)
+if not LOCAL_MODE:
+    router.include_router(stripe_webhooks_router)

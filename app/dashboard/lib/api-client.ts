@@ -1,6 +1,9 @@
 import * as Sentry from '@sentry/nextjs';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL;
+const API_URL =
+  typeof window === 'undefined'
+    ? process.env.AGENTOPS_INTERNAL_API_URL || process.env.NEXT_PUBLIC_API_URL
+    : process.env.NEXT_PUBLIC_API_URL;
 
 export class ApiError extends Error {
   status: number;
@@ -43,12 +46,12 @@ function getUserFriendlyErrorMessage(error: any, endpoint: string): string {
         return 'An unexpected error occurred. Please try again.';
     }
   }
-  
+
   // Network or other errors
   if (error.message?.includes('fetch')) {
     return 'Unable to connect to the server. Please check your internet connection and try again.';
   }
-  
+
   return 'An unexpected error occurred. Please try again.';
 }
 
@@ -56,6 +59,7 @@ function getUserFriendlyErrorMessage(error: any, endpoint: string): string {
  * Reports error to Sentry with additional context
  */
 function reportErrorToSentry(error: any, endpoint: string, context: Record<string, any> = {}) {
+  if (process.env.NEXT_PUBLIC_AGENTOPS_LOCAL_MODE === 'true') return;
   Sentry.withScope((scope: any) => {
     scope.setTag('error_source', 'api_client');
     scope.setTag('endpoint', endpoint);
@@ -64,7 +68,7 @@ function reportErrorToSentry(error: any, endpoint: string, context: Record<strin
       url: `${API_URL}${endpoint}`,
       ...context,
     });
-    
+
     if (error instanceof ApiError) {
       scope.setTag('api_status', error.status);
       scope.setLevel('error');
@@ -73,7 +77,7 @@ function reportErrorToSentry(error: any, endpoint: string, context: Record<strin
       scope.setTag('error_type', 'network_error');
       scope.setLevel('error');
     }
-    
+
     Sentry.captureException(error);
   });
 }
@@ -144,7 +148,7 @@ export async function fetchAuthenticatedApi<T = any>(
         status: error.status,
         responseBody: error.responseBody,
       });
-      
+
       // Check for 401 Unauthorized specifically
       if (error.status === 401) {
         // Ensure this runs only on the client side
@@ -171,7 +175,7 @@ export async function fetchAuthenticatedApi<T = any>(
         error_type: 'network_or_unexpected',
         original_message: (error as Error).message,
       });
-      
+
       console.error(`[API Client] Network or unexpected error for ${endpoint}:`, error);
       const userMessage = getUserFriendlyErrorMessage(error, endpoint);
       throw new Error(userMessage);

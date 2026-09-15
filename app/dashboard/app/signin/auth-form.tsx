@@ -8,6 +8,7 @@ import { toast } from '@/components/ui/use-toast';
 import { containerStyles, headingStyle, labelStyle } from '@/constants/styles';
 import { deleteCache } from '@/lib/idb';
 import { signInMethods } from '@/lib/signin';
+import { isLocalMode } from '@/lib/local-mode';
 import { cn } from '@/lib/utils';
 import { EyeIcon as Eye, ViewOffIcon } from 'hugeicons-react';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -149,7 +150,12 @@ function SignInForm(props: { setFormType: CallableFunction }) {
   return (
     <>
       <Container className={containerStyles}>
-        <h1 className={headingStyle}>Welcome</h1>
+        <h1 className={headingStyle}>{isLocalMode ? 'AgentOps Local' : 'Welcome'}</h1>
+        {isLocalMode && (
+          <p className="mb-4 text-sm text-muted-foreground">
+            使用本地初始化时设置的账号。数据保存在本地 PostgreSQL 和 ClickHouse。
+          </p>
+        )}
         {signInMethods.includes('email') && (
           <form className="grid gap-2" onSubmit={handleLogin}>
             <Label className={cn(labelStyle, 'mt-5')} htmlFor="email">
@@ -199,25 +205,27 @@ function SignInForm(props: { setFormType: CallableFunction }) {
               {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
               Login
             </Button>
-            <div className="mb-2 flex items-center gap-1 text-sm font-medium text-secondary dark:text-white">
-              {`Can't remember your password?`}
-              <Button
-                variant="link"
-                className="p-0 font-semibold text-black dark:text-white"
-                onClick={() => props.setFormType('recovery')}
-                onMouseDown={() => props.setFormType('recovery')}
-                data-testid="login-form-link-resetPassword"
-              >
-                Reset now
-              </Button>
-            </div>
+            {!isLocalMode && (
+              <div className="mb-2 flex items-center gap-1 text-sm font-medium text-secondary dark:text-white">
+                {`Can't remember your password?`}
+                <Button
+                  variant="link"
+                  className="p-0 font-semibold text-black dark:text-white"
+                  onClick={() => props.setFormType('recovery')}
+                  onMouseDown={() => props.setFormType('recovery')}
+                  data-testid="login-form-link-resetPassword"
+                >
+                  Reset now
+                </Button>
+              </div>
+            )}
           </form>
         )}
 
-        <ContinueWith setFormType={props.setFormType} />
+        {!isLocalMode && <ContinueWith setFormType={props.setFormType} />}
         <span className="mb-1 mt-4 w-full border-t border-[#DEE0F4]" />
 
-        {signInMethods.includes('email') && (
+        {!isLocalMode && signInMethods.includes('email') && (
           <div className="mt-2 flex items-center gap-1 text-sm font-medium text-secondary dark:text-white">
             {"Don't have an account?"}
             <Button
@@ -231,9 +239,11 @@ function SignInForm(props: { setFormType: CallableFunction }) {
           </div>
         )}
       </Container>
-      <div className="mt-12 pr-3">
-        <TOS />
-      </div>
+      {!isLocalMode && (
+        <div className="mt-12 pr-3">
+          <TOS />
+        </div>
+      )}
     </>
   );
 }

@@ -19,6 +19,7 @@ import { ILink } from './components/navlinks';
 import { SideNavbar } from './components/side-navbar';
 import { TopNavbar } from './components/top-navbar';
 import { usePatchNotes } from '@/app/providers/patch-notes-provider';
+import { isLocalMode } from '@/lib/local-mode';
 
 export type NavItemVariant = 'default' | 'ghost';
 
@@ -67,7 +68,7 @@ const dataLinksConfig: NavLinkConfig[] = [
     title: 'Deploy',
     href: '/deploy',
     IconComponent: DeployIcon,
-    badge: 'Alpha'
+    badge: 'Alpha',
   },
   // {
   //   title: 'Evals (Enterprise)',
@@ -89,22 +90,27 @@ function NavbarClientComponent(props: { mobile: boolean }) {
   }, []);
 
   const dataLinks: ILink[] = useMemo(() => {
-    return dataLinksConfig.map((config) => {
-      const isActive = pathname?.startsWith(config.href);
-      const variant = isActive ? 'default' : 'ghost';
-      return {
-        title: config.title,
-        href: config.href,
-        icon: <config.IconComponent className={getIconStyles(variant)} />,
-        variant,
-        onclick: config.onclick,
-        disabled: config.disabled,
-        badge: config.badge,
-      };
-    });
+    return dataLinksConfig
+      .filter(
+        (config) => !isLocalMode || ['/projects', '/traces', '/overview'].includes(config.href),
+      )
+      .map((config) => {
+        const isActive = pathname?.startsWith(config.href);
+        const variant = isActive ? 'default' : 'ghost';
+        return {
+          title: config.title,
+          href: config.href,
+          icon: <config.IconComponent className={getIconStyles(variant)} />,
+          variant,
+          onclick: config.onclick,
+          disabled: config.disabled,
+          badge: config.badge,
+        };
+      });
   }, [pathname]);
 
   const helpLinks = useMemo(() => {
+    if (isLocalMode) return [];
     const helpLinksWithIcons: ILink[] = [];
 
     // First add Patch Notes

@@ -4,7 +4,10 @@
 
 import * as Sentry from '@sentry/nextjs';
 
-if (process.env.NEXT_PUBLIC_ENVIRONMENT_TYPE === 'AGENTOPS') {
+if (
+  process.env.NEXT_PUBLIC_AGENTOPS_LOCAL_MODE !== 'true' &&
+  process.env.NEXT_PUBLIC_ENVIRONMENT_TYPE === 'AGENTOPS'
+) {
   Sentry.init({
     dsn: process?.env?.NEXT_PUBLIC_SENTRY_DSN,
     environment: process?.env?.NEXT_PUBLIC_SENTRY_ENVIRONMENT,

@@ -4,6 +4,9 @@
 // with Sentry.
 // https://nextjs.org/docs/api-reference/next.config.js/introduction
 const { withSentryConfig } = require('@sentry/nextjs');
+const path = require('node:path');
+const isLocalMode = process.env.NEXT_PUBLIC_AGENTOPS_LOCAL_MODE === 'true';
+const localApi = process.env.AGENTOPS_INTERNAL_API_URL || 'http://localhost:8000';
 const withBundleAnalyzer = require('@next/bundle-analyzer')({
   enabled: process.env.ANALYZE === 'true',
   openAnalyzer: false,
@@ -15,6 +18,18 @@ const withBundleAnalyzer = require('@next/bundle-analyzer')({
 
 const nextConfig = {
   reactStrictMode: true,
+  webpack(config, { webpack }) {
+    if (isLocalMode) {
+      // Replace before tsconfig's paths resolver; a resolve.alias alone is insufficient.
+      config.plugins.push(
+        new webpack.NormalModuleReplacementPlugin(
+          /^@\/lib\/fonts$/,
+          path.resolve(__dirname, 'lib/fonts.local.ts'),
+        ),
+      );
+    }
+    return config;
+  },
   env: {
     VERCEL_BUILD_HASH: process.env.VERCEL_GIT_COMMIT_SHA,
   },
@@ -66,6 +81,13 @@ const nextConfig = {
   skipTrailingSlashRedirect: true,
 
   async rewrites() {
+    if (isLocalMode)
+      return [
+        { source: '/auth/:path*', destination: `${localApi}/auth/:path*` },
+        { source: '/opsboard/:path*', destination: `${localApi}/opsboard/:path*` },
+        { source: '/api-v4/:path*', destination: `${localApi}/:path*` },
+        { source: '/api-metrics/:path*', destination: `${localApi}/:path*` },
+      ];
     return [
       {
         source: '/ingest/static/:path*',
@@ -177,6 +199,8 @@ const sentryOptions = {
 // Make sure adding Sentry options is the last code to run before exporting
 // Only use senty in prod
 const config =
-  process.env.NODE_ENV === 'production' ? withSentryConfig(nextConfig, sentryOptions) : nextConfig;
+  process.env.NODE_ENV === 'production' && !isLocalMode
+    ? withSentryConfig(nextConfig, sentryOptions)
+    : nextConfig;
 
 module.exports = withBundleAnalyzer(config);

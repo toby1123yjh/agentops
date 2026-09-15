@@ -1,4 +1,5 @@
 from agentops.common.route_config import RouteConfig
+from agentops.common.local_mode import LOCAL_MODE
 
 from .views.users import (
     get_user,
@@ -247,3 +248,13 @@ route_config: list[RouteConfig] = [
         methods=["GET"],
     ),
 ]
+
+if LOCAL_MODE:
+    # Keep the original project/member authorization. Cloud billing/invitations are not mounted.
+    local_routes = {
+        "get_user", "update_user", "update_user_survey_complete",
+        "get_user_orgs", "get_org", "create_org", "update_org",
+        "get_projects", "get_project", "create_project", "update_project",
+        "delete_project", "regenerate_api_key",
+    }
+    route_config = [route for route in route_config if route.name in local_routes]

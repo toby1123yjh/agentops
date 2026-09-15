@@ -9,6 +9,7 @@ export function PostHogUserIdentifier() {
   const posthog = usePostHog();
 
   useEffect(() => {
+    if (process.env.NEXT_PUBLIC_AGENTOPS_LOCAL_MODE === 'true') return;
     if (posthog && user?.id) {
       posthog.identify(user.id, {
         email: user.email || undefined,

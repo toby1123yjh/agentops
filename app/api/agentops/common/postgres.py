@@ -2,6 +2,7 @@ import atexit
 import signal
 import logging
 from psycopg_pool import ConnectionPool
+from urllib.parse import quote
 from .environment import (
     SUPABASE_HOST,
     SUPABASE_PORT,
@@ -37,7 +38,8 @@ class ConnectionConfig:
     @classmethod
     def to_connection_string(cls, protocol: str = "postgresql") -> str:
         """Format config as a URL connection string."""
-        return f"{protocol}://{cls.user}:{cls.password}@{cls.host}:{cls.port}/{cls.database}?sslmode={SUPABASE_SSLMODE}"
+        return (f"{protocol}://{quote(str(cls.user), safe='')}:{quote(str(cls.password), safe='')}"
+                f"@{cls.host}:{cls.port}/{quote(str(cls.database), safe='')}?sslmode={SUPABASE_SSLMODE}")
 
 
 def _cleanup_handler(signum=None, frame=None):

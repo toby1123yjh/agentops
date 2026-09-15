@@ -308,7 +308,7 @@ export const TraceMetaData = ({
                       <div className="space-y-2">
                         <p className="font-medium">Unable to calculate cost</p>
                         <p>
-                          This might be because you're using an unrecognized model
+                          This might be because you&apos;re using an unrecognized model
                         </p>
                       </div>
                     </TooltipContent>

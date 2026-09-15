@@ -13,6 +13,7 @@ import { SurveyModal } from '@/components/survey-modal';
 import { PostHogUserIdentifier } from '@/components/posthog-user-identifier';
 import { SurveyCheckProvider } from '@/app/providers/survey-check-provider';
 import { PatchNotesProvider } from '@/app/providers/patch-notes-provider';
+import { isLocalMode } from '@/lib/local-mode';
 
 export default async function AppLayout({ children }: PropsWithChildren) {
   return (
@@ -26,12 +27,18 @@ export default async function AppLayout({ children }: PropsWithChildren) {
               <HeaderProvider>
                 <SidebarProvider>
                   <LayoutContentWrapper>
+                    {isLocalMode && (
+                      <div className="border-b px-5 py-2 text-sm text-muted-foreground">
+                        本地模式 · PostgreSQL / ClickHouse ·
+                        云端登录、计费、文件上传和部署功能未启用
+                      </div>
+                    )}
                     {signInMethods.includes('anonymous') && (
                       <div className="mb-2 flex flex-row bg-background px-5 py-5 shadow-md sm:pl-24">
                         <Info />
                         <div className="pl-2">
-                          You are using AgentOps in Playground Mode. To access full features and save
-                          your traces,{' '}
+                          You are using AgentOps in Playground Mode. To access full features and
+                          save your traces,{' '}
                           <Link href="https://app.agentops.ai" className="underline">
                             log in or create an account
                           </Link>
@@ -41,7 +48,7 @@ export default async function AppLayout({ children }: PropsWithChildren) {
                     <div className="">
                       <Suspense fallback={<></>}>{children}</Suspense>
                     </div>
-                    <SurveyModal />
+                    {!isLocalMode && <SurveyModal />}
                   </LayoutContentWrapper>
                 </SidebarProvider>
               </HeaderProvider>

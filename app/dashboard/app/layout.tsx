@@ -2,23 +2,12 @@ import { ThemeProvider } from '@/components/theme-provider';
 import { Banner } from '@/components/ui/banner';
 import { Toaster } from '@/components/ui/toaster';
 import { cn } from '@/lib/utils';
-import { Figtree } from 'next/font/google';
-import localFont from 'next/font/local';
+import { figtreeFont, nasalizationFont } from '@/lib/fonts';
 import Link from 'next/link';
 import { PropsWithChildren } from 'react';
 import './globals.css';
 import { BackgroundImageOverlay } from '@/components/ui/background-image-overlay';
 import { PostHogProvider } from '@/app/providers/posthog-provider';
-
-const figtreeFont = Figtree({
-  subsets: ['latin'],
-  variable: '--font-figtree',
-});
-
-const nasalizationFont = localFont({
-  src: '../public/font/nasalization/nasalization-rg.otf',
-  variable: '--font-nasalization',
-});
 
 const meta = {
   title: 'AgentOps Dashboard',
