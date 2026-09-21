@@ -1,18 +1,20 @@
 FROM node:20-bookworm-slim AS builder
 WORKDIR /app
+ARG NEXT_PUBLIC_API_URL=http://localhost:32171
 ENV NEXT_TELEMETRY_DISABLED=1 CYPRESS_INSTALL_BINARY=0
 COPY --from=oven/bun:1.2.15 /usr/local/bin/bun /usr/local/bin/bun
 COPY package.json bun.lock ./
 RUN bun install --frozen-lockfile --ignore-scripts
 COPY . .
-ENV NEXT_PUBLIC_AGENTOPS_LOCAL_MODE=true NEXT_PUBLIC_API_URL=http://localhost:8000
+ENV NEXT_PUBLIC_AGENTOPS_LOCAL_MODE=true NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
 ENV AGENTOPS_INTERNAL_API_URL=http://api:8000 NEXT_PUBLIC_PLAYGROUND=false
 RUN npm run build
 
 FROM node:20-bookworm-slim
 WORKDIR /app
+ARG NEXT_PUBLIC_API_URL=http://localhost:32171
 ENV NODE_ENV=production NEXT_TELEMETRY_DISABLED=1
-ENV NEXT_PUBLIC_AGENTOPS_LOCAL_MODE=true NEXT_PUBLIC_API_URL=http://localhost:8000
+ENV NEXT_PUBLIC_AGENTOPS_LOCAL_MODE=true NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
 ENV AGENTOPS_INTERNAL_API_URL=http://api:8000 NEXT_PUBLIC_PLAYGROUND=false
 COPY --from=builder /app ./
 CMD ["npm", "run", "start"]

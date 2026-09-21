@@ -15,7 +15,7 @@ docker compose --env-file .env.local-mode -f compose.local.yaml up -d --build
 docker compose --env-file .env.local-mode -f compose.local.yaml ps
 ```
 
-打开 `http://localhost:3000/signin`，使用配置中的本地账号登录。首次初始化自动建立本地工作区和项目。项目 API Key 在原版项目页面查看。
+打开 `http://localhost:32170/signin`，使用配置中的本地账号登录。首次初始化自动建立本地工作区和项目。项目 API Key 在原版项目页面查看。
 
 初始化会等待两套数据库健康，完成后才启动 API 和 Dashboard。重复启动不重设密码或 API Key；修改初始化环境变量不会覆盖数据库中的现有账号。PostgreSQL 和 ClickHouse 使用本模式专有数据卷，不连接 cestc-claw 业务库。初始化拒绝未标记的非空数据库。
 
@@ -26,7 +26,7 @@ docker compose --env-file .env.local-mode -f compose.local.yaml logs --tail=100 
 docker compose --env-file .env.local-mode -f compose.local.yaml stop
 ```
 
-不要使用 `down -v` 作为日常停止方式，它会删除本地数据库卷。此模式固定使用 3000、8000、4318；启动前检查端口占用。
+不要使用 `down -v` 作为日常停止方式，它会删除本地数据库卷。宿主机默认使用 `32170`（Dashboard）、`32171`（API）和 `32172`（OTLP）；可以在 `.env.local-mode` 中通过 `AGENTOPS_DASHBOARD_PORT`、`AGENTOPS_API_PORT` 和 `AGENTOPS_OTLP_PORT` 修改。容器内部仍使用 `3000`、`8000` 和 `4318`。
 
 ## 修改 Dashboard 时的启动方式
 
@@ -36,7 +36,7 @@ docker compose --env-file .env.local-mode -f compose.local.yaml stop
 docker compose --env-file .env.local-mode -f compose.local.yaml up -d --build api otelcollector
 ```
 
-若此前已启动 Compose 中的 Dashboard，先执行 `docker compose --env-file .env.local-mode -f compose.local.yaml stop dashboard`，释放 3000 端口。
+若此前已启动 Compose 中的 Dashboard，先执行 `docker compose --env-file .env.local-mode -f compose.local.yaml stop dashboard`，释放 `32170` 端口。
 
 在 `app/dashboard/` 使用 Node.js 20 和 Bun 1.2.15：
 
@@ -53,9 +53,9 @@ Windows 若 Bun 安装报文件移动 `EPERM`，可在安装命令末尾加 `--b
 
 ```text
 AGENTOPS_API_KEY=<本地项目页面中的 API Key>
-AGENTOPS_API_ENDPOINT=http://localhost:8000
-AGENTOPS_EXPORTER_ENDPOINT=http://localhost:4318/v1/traces
-AGENTOPS_APP_URL=http://localhost:3000
+AGENTOPS_API_ENDPOINT=http://localhost:32171
+AGENTOPS_EXPORTER_ENDPOINT=http://localhost:32172/v1/traces
+AGENTOPS_APP_URL=http://localhost:32170
 ```
 
 首个验证使用普通 Trace / Span 示例，不发送真实业务内容。文件和日志附件上传尚未提供本地存储适配，SDK 示例需关闭这些可选上传能力。Trace / Span 的结构化记录仍通过 OTLP 写入 ClickHouse。

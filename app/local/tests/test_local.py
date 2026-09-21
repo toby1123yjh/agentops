@@ -22,7 +22,7 @@ def client(monkeypatch):
     monkeypatch.setattr(local_auth, "get_session_user", lambda sid: sessions.get(str(sid)))
     monkeypatch.setattr(local_auth, "update_session", lambda sid, ttl: sessions.pop(str(sid), None) if ttl is None else None)
     local_app._attempts.clear()
-    with TestClient(local_app.app, base_url="http://localhost:8000") as test_client:
+    with TestClient(local_app.app, base_url="http://localhost:32171") as test_client:
         yield test_client
 
 
@@ -119,6 +119,9 @@ def test_local_compose_is_isolated():
         if build:
             assert (root / build['context'] / build['dockerfile']).resolve().is_file()
     assert compose['services']['api']['depends_on']['initialize']['condition'] == 'service_completed_successfully'
+    assert compose['services']['dashboard']['ports'] == ['127.0.0.1:${AGENTOPS_DASHBOARD_PORT:-32170}:3000']
+    assert compose['services']['api']['ports'] == ['127.0.0.1:${AGENTOPS_API_PORT:-32171}:8000']
+    assert compose['services']['otelcollector']['ports'] == ['127.0.0.1:${AGENTOPS_OTLP_PORT:-32172}:4318']
     assert len(compose['volumes']) == 2
 
 

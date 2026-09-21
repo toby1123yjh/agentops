@@ -171,9 +171,9 @@ export default function EmptyProject() {
         <p>在项目设置中复制 API Key，并为 SDK 配置以下环境变量。不要使用 SDK 默认云端地址。</p>
         <pre className="overflow-x-auto rounded-lg border bg-muted p-4 text-sm">
           {`AGENTOPS_API_KEY=<本地项目 API Key>
-AGENTOPS_API_ENDPOINT=http://localhost:8000
-AGENTOPS_EXPORTER_ENDPOINT=http://localhost:4318/v1/traces
-AGENTOPS_APP_URL=http://localhost:3000`}
+AGENTOPS_API_ENDPOINT=http://localhost:32171
+AGENTOPS_EXPORTER_ENDPOINT=http://localhost:32172/v1/traces
+AGENTOPS_APP_URL=http://localhost:32170`}
         </pre>
         <p className="text-sm text-muted-foreground">
           首次验证只发送测试 Trace / Span。文件和日志附件上传尚未支持；请关闭这些可选上传能力。
