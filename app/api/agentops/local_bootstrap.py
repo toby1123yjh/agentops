@@ -1,7 +1,11 @@
 """Initialize only the dedicated local databases, reusing upstream ClickHouse DDL."""
 
 from pathlib import Path
+import os
 import re
+import time
+
+from sqlalchemy.exc import OperationalError
 
 from agentops.local_auth import bootstrap
 from agentops.common.local_mode import validate_local_settings
@@ -48,7 +52,22 @@ def initialize_clickhouse() -> None:
         client.close()
 
 
+def initialize_postgres() -> None:
+    """Wait a bounded time for an externally managed PostgreSQL instance."""
+    attempts = int(os.getenv("POSTGRES_CONNECT_ATTEMPTS", "30"))
+    delay = float(os.getenv("POSTGRES_CONNECT_DELAY_SECONDS", "2"))
+    for attempt in range(1, attempts + 1):
+        try:
+            bootstrap()
+            return
+        except OperationalError:
+            if attempt == attempts:
+                raise
+            print(f"PostgreSQL is unavailable; retrying ({attempt}/{attempts})", flush=True)
+            time.sleep(delay)
+
+
 if __name__ == '__main__':
-    bootstrap()
+    initialize_postgres()
     initialize_clickhouse()
-    print('Local PostgreSQL and ClickHouse initialized; existing user credentials are unchanged.')
+    print('AgentOps PostgreSQL and ClickHouse initialized; existing user credentials are unchanged.')

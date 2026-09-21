@@ -39,6 +39,25 @@ def test_settings_reject_public_host(monkeypatch):
         validate_local_settings()
 
 
+@pytest.mark.parametrize("url", ["http://agentops-dev.example.test", "https://agentops.example.test"])
+def test_settings_accept_explicit_public_origin(monkeypatch, url):
+    monkeypatch.setenv("AGENTOPS_PUBLIC_URL", url)
+    validate_local_settings()
+
+
+@pytest.mark.parametrize("url", [
+    "agentops.example.test",
+    "ftp://agentops.example.test",
+    "https://user:password@agentops.example.test",
+    "https://agentops.example.test/path",
+    "https://agentops.example.test?query=1",
+])
+def test_settings_reject_invalid_public_origin(monkeypatch, url):
+    monkeypatch.setenv("AGENTOPS_PUBLIC_URL", url)
+    with pytest.raises(RuntimeError, match="AGENTOPS_PUBLIC_URL"):
+        validate_local_settings()
+
+
 def test_mode_is_explicit(monkeypatch):
     import agentops.common.local_mode as settings
     monkeypatch.setattr(settings, 'LOCAL_MODE', False)
@@ -123,6 +142,23 @@ def test_local_compose_is_isolated():
     assert compose['services']['api']['ports'] == ['127.0.0.1:${AGENTOPS_API_PORT:-32171}:8000']
     assert compose['services']['otelcollector']['ports'] == ['127.0.0.1:${AGENTOPS_OTLP_PORT:-32172}:4318']
     assert len(compose['volumes']) == 2
+
+
+def test_server_compose_uses_external_postgres():
+    root = Path(__file__).resolve().parents[2]
+    compose = yaml.safe_load((root / 'compose.server.yaml').read_text(encoding='utf-8'))
+    assert 'postgres' not in compose['services']
+    assert compose['networks']['database']['external'] is True
+    assert compose['networks']['database']['name'] == '${AGENTOPS_DB_NETWORK:?Set AGENTOPS_DB_NETWORK}'
+    for service_name in ('initialize', 'api'):
+        assert 'database' in compose['services'][service_name]['networks']
+    environment = compose['services']['api']['environment']
+    assert environment['POSTGRES_HOST'] == '${POSTGRES_HOST:?Set POSTGRES_HOST}'
+    assert environment['POSTGRES_DB'] == '${POSTGRES_DB:-agentops}'
+    assert compose['services']['dashboard']['build']['args']['NEXT_PUBLIC_API_URL'] == (
+        '${AGENTOPS_PUBLIC_URL:?Set AGENTOPS_PUBLIC_URL}'
+    )
+    assert list(compose['volumes']) == ['server-clickhouse']
 
 
 def test_bootstrap_rejects_weak_password(monkeypatch):

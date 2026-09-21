@@ -2,6 +2,8 @@
 
 原版 Dashboard 的本地开发模式见 [local/README.md](local/README.md)。使用独立的 `compose.local.yaml`，不要与下方原有 Supabase 部署配置混用。
 
+复用现有 PostgreSQL 实例的服务器部署见 [server/README.md](server/README.md)。该模式使用独立数据库和账号，不启动 PostgreSQL 容器。
+
 Restart local stack and verify
 
 - Restart services:

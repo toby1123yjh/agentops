@@ -3,6 +3,7 @@ from types import SimpleNamespace
 from uuid import uuid4
 
 import pytest
+from sqlalchemy.exc import OperationalError
 from sqlalchemy import create_mock_engine
 
 
@@ -104,3 +105,20 @@ def test_clickhouse_failure_never_marks_complete(monkeypatch):
         local_bootstrap.initialize_clickhouse()
     assert not any(sql.startswith('INSERT INTO otel_2.local_schema_versions') for sql in client.commands)
     assert client.closed
+
+
+def test_postgres_initialization_retries_connection_failures(monkeypatch):
+    from agentops import local_bootstrap
+    calls = []
+
+    def bootstrap():
+        calls.append(True)
+        if len(calls) == 1:
+            raise OperationalError("connect", {}, RuntimeError("unavailable"))
+
+    monkeypatch.setattr(local_bootstrap, "bootstrap", bootstrap)
+    monkeypatch.setattr(local_bootstrap.time, "sleep", lambda _: None)
+    monkeypatch.setenv("POSTGRES_CONNECT_ATTEMPTS", "2")
+    monkeypatch.setenv("POSTGRES_CONNECT_DELAY_SECONDS", "0")
+    local_bootstrap.initialize_postgres()
+    assert len(calls) == 2

@@ -1,12 +1,19 @@
 import os
-from .local_mode import LOCAL_MODE
+from urllib.parse import urlparse
+from .local_mode import LOCAL_MODE, get_public_url
 
 # Base URLs and domains
-APP_DOMAIN = os.getenv("APP_DOMAIN", "localhost:3000" if LOCAL_MODE else "app.agentops.ai")
-API_DOMAIN = os.getenv("API_DOMAIN", "localhost:8000" if LOCAL_MODE else "api.agentops.ai")
-
-# Protocol - defaults to https but can be overridden for local development
-PROTOCOL = os.getenv("PROTOCOL", "http" if LOCAL_MODE else "https")
+PUBLIC_URL = get_public_url() if LOCAL_MODE else None
+if PUBLIC_URL:
+    _public = urlparse(PUBLIC_URL)
+    APP_DOMAIN = _public.netloc
+    API_DOMAIN = _public.netloc
+    PROTOCOL = _public.scheme
+else:
+    APP_DOMAIN = os.getenv("APP_DOMAIN", "localhost:3000" if LOCAL_MODE else "app.agentops.ai")
+    API_DOMAIN = os.getenv("API_DOMAIN", "localhost:8000" if LOCAL_MODE else "api.agentops.ai")
+    # Protocol defaults to HTTPS in cloud mode and loopback HTTP in local mode.
+    PROTOCOL = os.getenv("PROTOCOL", "http" if LOCAL_MODE else "https")
 
 # Full base URLs
 APP_URL = f"{PROTOCOL}://{APP_DOMAIN}"

@@ -1,6 +1,7 @@
 # Byte-compiled / optimized / DLL files
 .venv-local/
 .env.local-mode
+.env.server-mode
 cache.db
 __pycache__/
 *.py[cod]
