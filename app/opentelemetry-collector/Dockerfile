@@ -9,7 +9,8 @@ WORKDIR /app
 COPY builder ./builder
 COPY config ./config
 
-RUN pip install -e builder
+ARG PYPI_INDEX_URL=https://mirrors.aliyun.com/pypi/simple/
+RUN pip install --no-cache-dir --index-url "${PYPI_INDEX_URL}" -e builder
 RUN mkdir -p out
 RUN python -m builder generate_configs -o /app/out
 

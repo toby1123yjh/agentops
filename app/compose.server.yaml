@@ -43,6 +43,8 @@ services:
     build:
       context: .
       dockerfile: local/Dockerfile.api
+      args:
+        PYPI_INDEX_URL: ${AGENTOPS_PYPI_INDEX_URL:-https://mirrors.aliyun.com/pypi/simple/}
     environment:
       <<: *api-environment
       AGENTOPS_LOCAL_EMAIL: ${AGENTOPS_LOCAL_EMAIL:?Set AGENTOPS_LOCAL_EMAIL}
@@ -59,6 +61,8 @@ services:
     build:
       context: .
       dockerfile: local/Dockerfile.api
+      args:
+        PYPI_INDEX_URL: ${AGENTOPS_PYPI_INDEX_URL:-https://mirrors.aliyun.com/pypi/simple/}
     environment: *api-environment
     ports:
       - '127.0.0.1:${AGENTOPS_API_PORT:-32171}:8000'
@@ -78,6 +82,8 @@ services:
     build:
       context: ./opentelemetry-collector
       dockerfile: Dockerfile
+      args:
+        PYPI_INDEX_URL: ${AGENTOPS_PYPI_INDEX_URL:-https://mirrors.aliyun.com/pypi/simple/}
     environment:
       CLICKHOUSE_ENDPOINT: http://clickhouse:8123
       CLICKHOUSE_USERNAME: agentops
@@ -101,6 +107,7 @@ services:
       dockerfile: ../local/Dockerfile.dashboard
       args:
         NEXT_PUBLIC_API_URL: ${AGENTOPS_PUBLIC_URL:?Set AGENTOPS_PUBLIC_URL}
+        NPM_REGISTRY: ${AGENTOPS_NPM_REGISTRY:-https://registry.npmmirror.com}
     ports:
       - '127.0.0.1:${AGENTOPS_DASHBOARD_PORT:-32170}:3000'
     depends_on:

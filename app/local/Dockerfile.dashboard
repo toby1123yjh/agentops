@@ -1,8 +1,9 @@
 FROM node:20-bookworm-slim AS builder
 WORKDIR /app
 ARG NEXT_PUBLIC_API_URL=http://localhost:32171
-ENV NEXT_TELEMETRY_DISABLED=1 CYPRESS_INSTALL_BINARY=0
-COPY --from=oven/bun:1.2.15 /usr/local/bin/bun /usr/local/bin/bun
+ARG NPM_REGISTRY=https://registry.npmmirror.com
+ENV NEXT_TELEMETRY_DISABLED=1 CYPRESS_INSTALL_BINARY=0 NPM_CONFIG_REGISTRY=${NPM_REGISTRY}
+RUN npm install --global bun@1.2.15 --registry="${NPM_REGISTRY}"
 COPY package.json bun.lock ./
 RUN bun install --frozen-lockfile --ignore-scripts
 COPY . .
