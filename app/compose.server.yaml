@@ -3,7 +3,7 @@ name: agentops-server
 x-api-environment: &api-environment
   AGENTOPS_LOCAL_MODE: 'true'
   AGENTOPS_PUBLIC_URL: ${AGENTOPS_PUBLIC_URL:?Set AGENTOPS_PUBLIC_URL}
-  POSTGRES_HOST: ${POSTGRES_HOST:?Set POSTGRES_HOST}
+  POSTGRES_HOST: postgres
   POSTGRES_PORT: ${POSTGRES_PORT:-5432}
   POSTGRES_DB: ${POSTGRES_DB:-agentops}
   POSTGRES_USER: ${POSTGRES_USER:-agentops}
@@ -24,6 +24,21 @@ x-api-environment: &api-environment
   SENTRY_DSN: ''
 
 services:
+  postgres:
+    image: postgres:15-bookworm
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-agentops}
+      POSTGRES_USER: ${POSTGRES_USER:-agentops}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
+    volumes:
+      - server-postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-agentops} -d ${POSTGRES_DB:-agentops}']
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+
   clickhouse:
     image: clickhouse/clickhouse-server:24.12
     environment:
@@ -51,11 +66,10 @@ services:
       AGENTOPS_LOCAL_PASSWORD: ${AGENTOPS_LOCAL_PASSWORD:?Set AGENTOPS_LOCAL_PASSWORD}
     command: ['python', '-m', 'agentops.local_bootstrap']
     depends_on:
+      postgres:
+        condition: service_healthy
       clickhouse:
         condition: service_healthy
-    networks:
-      - default
-      - database
 
   api:
     build:
@@ -73,9 +87,6 @@ services:
       test: ['CMD', 'python', '-c', "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
       interval: 10s
       retries: 10
-    networks:
-      - default
-      - database
     restart: unless-stopped
 
   otelcollector:
@@ -115,10 +126,6 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
-networks:
-  database:
-    external: true
-    name: ${AGENTOPS_DB_NETWORK:?Set AGENTOPS_DB_NETWORK}
-
 volumes:
+  server-postgres:
   server-clickhouse:
