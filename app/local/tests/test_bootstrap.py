@@ -73,6 +73,8 @@ class ClickHouseRecorder:
 @pytest.mark.parametrize('tables,initialized', [((), False), (('local_schema_versions', 'otel_logs'), False), (('local_schema_versions',), True)])
 def test_clickhouse_initialize_and_restart(monkeypatch, tables, initialized):
     from agentops import local_bootstrap
+    monkeypatch.setenv('CLICKHOUSE_USER', 'agentops')
+    monkeypatch.setenv('CLICKHOUSE_PASSWORD', 'clickhouse')
     client = ClickHouseRecorder(tables, initialized)
     monkeypatch.setattr(local_bootstrap, 'get_clickhouse', lambda: client)
     local_bootstrap.initialize_clickhouse()
@@ -84,8 +86,7 @@ def test_clickhouse_initialize_and_restart(monkeypatch, tables, initialized):
     assert 'TRUNCATE TABLE otel_2.model_costs_source' in client.commands
     assert not any(sql.startswith('TRUNCATE TABLE otel_2.otel') for sql in client.commands)
     dictionary = next(sql for sql in client.commands if sql.startswith('CREATE DICTIONARY'))
-    assert "SOURCE(CLICKHOUSE(DB 'otel_2'" in dictionary
-    assert "USER 'default'" not in dictionary
+    assert "HOST 'clickhouse' PORT 9000 USER 'agentops' PASSWORD 'clickhouse' DB 'otel_2'" in dictionary
 
 
 def test_clickhouse_rejects_unmarked_database(monkeypatch):

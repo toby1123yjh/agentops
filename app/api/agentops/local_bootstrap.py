@@ -35,8 +35,15 @@ def initialize_clickhouse() -> None:
             return
         for migration in sorted(root.glob('*.sql')):
             source = migration.read_text(encoding='utf-8')
-            # Local dictionaries read the local table without cloud/server login configuration.
-            source = source.replace("HOST 'localhost' PORT 9000 USER 'default' DB", "DB")
+            # Local dictionaries must use the configured ClickHouse account. The
+            # container image replaces the default user, so the upstream migration's
+            # hard-coded `default` account cannot read the local cost table.
+            clickhouse_user = os.getenv('CLICKHOUSE_USER', 'default').replace("'", "''")
+            clickhouse_password = os.getenv('CLICKHOUSE_PASSWORD', '').replace("'", "''")
+            source = source.replace(
+                "HOST 'localhost' PORT 9000 USER 'default' DB",
+                f"HOST 'clickhouse' PORT 9000 USER '{clickhouse_user}' PASSWORD '{clickhouse_password}' DB",
+            )
             for statement in statements(source):
                 statement = re.sub(r'^CREATE (TABLE|MATERIALIZED VIEW) (?!IF NOT EXISTS)', r'CREATE \1 IF NOT EXISTS ', statement)
                 if migration.name.startswith(('0003_', '0004_')):
