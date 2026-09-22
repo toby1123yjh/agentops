@@ -60,6 +60,9 @@ services:
       dockerfile: local/Dockerfile.api
       args:
         PYPI_INDEX_URL: ${AGENTOPS_PYPI_INDEX_URL:-https://mirrors.aliyun.com/pypi/simple/}
+        UV_CONCURRENT_DOWNLOADS: ${AGENTOPS_UV_CONCURRENT_DOWNLOADS:-2}
+        UV_HTTP_TIMEOUT: ${AGENTOPS_UV_HTTP_TIMEOUT:-300}
+        UV_HTTP_RETRIES: ${AGENTOPS_UV_HTTP_RETRIES:-10}
     environment:
       <<: *api-environment
       AGENTOPS_LOCAL_EMAIL: ${AGENTOPS_LOCAL_EMAIL:?Set AGENTOPS_LOCAL_EMAIL}
@@ -77,6 +80,9 @@ services:
       dockerfile: local/Dockerfile.api
       args:
         PYPI_INDEX_URL: ${AGENTOPS_PYPI_INDEX_URL:-https://mirrors.aliyun.com/pypi/simple/}
+        UV_CONCURRENT_DOWNLOADS: ${AGENTOPS_UV_CONCURRENT_DOWNLOADS:-2}
+        UV_HTTP_TIMEOUT: ${AGENTOPS_UV_HTTP_TIMEOUT:-300}
+        UV_HTTP_RETRIES: ${AGENTOPS_UV_HTTP_RETRIES:-10}
     environment: *api-environment
     ports:
       - '127.0.0.1:${AGENTOPS_API_PORT:-32171}:8000'
