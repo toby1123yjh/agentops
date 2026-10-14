@@ -58,6 +58,20 @@ docker compose ps -a
 docker compose logs --tail=200 initialize api dashboard otelcollector
 ```
 
+### 构建依赖与缓存
+
+API 和初始化镜像先从 `api/uv.lock` 导出生产依赖的固定版本和校验哈希，再通过 `AGENTOPS_PYPI_INDEX_URL` 指定的源下载并校验，不使用锁文件中保存的包下载地址。
+
+第三方依赖在复制源码前安装。仅修改 API 源码、初始化代码或数据库迁移时，可复用依赖安装层；修改依赖清单、基础镜像或下载配置时会重建该层。pip 与 uv 下载缓存跨构建保留，基础镜像固定摘要，构建使用 Docker 自带的 BuildKit frontend。
+
+第一次使用新 Dockerfile 仍会重建依赖层。后续缓存是否可用取决于构建缓存是否被保留；这些调整不保证服务器到镜像源的网络速度。需要升级 Python 基础镜像时，应显式更新其摘要。
+
+查看每个构建步骤的完整输出，在 `app/` 目录执行：
+
+```sh
+docker compose --progress=plain build initialize api
+```
+
 ## 4. 更新已有部署
 
 使用旧 `.env.server-mode` 的服务器，将现有配置复制成 `.env`。保留原数据库密码、登录账号和认证密钥；不要用示例覆盖已有配置。在 `app/` 目录执行：

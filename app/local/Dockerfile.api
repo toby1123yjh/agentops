@@ -1,5 +1,6 @@
-# syntax=docker/dockerfile:1.7
-FROM python:3.12-slim-bookworm
+# Use Docker's bundled frontend and keep the base stable between source updates.
+ARG PYTHON_BASE_IMAGE=python:3.12-slim-bookworm@sha256:34386ef0cb081344d7ec1c103ba398e6e9f64e9ab3a1509accc92a4e24a07258
+FROM ${PYTHON_BASE_IMAGE}
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
 WORKDIR /app
 ARG PYPI_INDEX_URL=https://mirrors.aliyun.com/pypi/simple/
@@ -11,15 +12,27 @@ ENV UV_DEFAULT_INDEX=${PYPI_INDEX_URL} \
     UV_CONCURRENT_DOWNLOADS=${UV_CONCURRENT_DOWNLOADS} \
     UV_HTTP_TIMEOUT=${UV_HTTP_TIMEOUT} \
     UV_HTTP_RETRIES=${UV_HTTP_RETRIES}
-RUN python -m pip install --no-cache-dir \
+RUN --mount=type=cache,id=agentops-pip,target=/root/.cache/pip \
+    python -m pip install \
     --index-url "${PYPI_INDEX_URL}" \
     uv==0.8.22
 COPY api/pyproject.toml api/uv.lock /app/
+# Export pins and hashes, rather than downloading from URLs saved in uv.lock.
+# This layer depends only on dependency metadata, so source changes reuse it.
+RUN --mount=type=cache,id=agentops-uv,target=/root/.cache/uv \
+    uv export --frozen --no-dev --no-emit-project --no-emit-package jockey \
+        --output-file /tmp/requirements.txt \
+    && uv venv /app/.venv \
+    && uv pip install --python /app/.venv/bin/python \
+        --require-hashes --no-deps \
+        --default-index "${PYPI_INDEX_URL}" \
+        --requirements /tmp/requirements.txt
 COPY api/agentops /app/agentops
 COPY deploy/jockey /app/jockey
 COPY clickhouse/migrations /app/clickhouse/migrations
 RUN --mount=type=cache,id=agentops-uv,target=/root/.cache/uv \
-    uv sync --frozen --no-dev \
-    --default-index "${PYPI_INDEX_URL}"
+    uv pip install --python /app/.venv/bin/python --no-deps \
+        --default-index "${PYPI_INDEX_URL}" \
+        --editable /app --editable /app/jockey
 ENV PATH="/app/.venv/bin:$PATH"
 CMD ["uvicorn", "agentops.app:app", "--host", "0.0.0.0", "--port", "8000"]
