@@ -3,8 +3,8 @@ name: agentops-local
 x-api-environment: &api-environment
   AGENTOPS_LOCAL_MODE: 'true'
   PROTOCOL: http
-  API_DOMAIN: localhost:${AGENTOPS_API_PORT:-32171}
-  APP_DOMAIN: localhost:${AGENTOPS_DASHBOARD_PORT:-32170}
+  API_DOMAIN: localhost:${AGENTOPS_API_PORT:-38622}
+  APP_DOMAIN: localhost:${AGENTOPS_DASHBOARD_PORT:-38621}
   POSTGRES_HOST: postgres
   POSTGRES_PORT: '5432'
   POSTGRES_DB: agentops_local
@@ -69,7 +69,7 @@ services:
       dockerfile: local/Dockerfile.api
     environment: *api-environment
     ports:
-      - '127.0.0.1:${AGENTOPS_API_PORT:-32171}:8000'
+      - '127.0.0.1:${AGENTOPS_API_PORT:-38622}:8000'
     depends_on:
       initialize:
         condition: service_completed_successfully
@@ -93,7 +93,7 @@ services:
       CLICKHOUSE_TIMEOUT: 10s
       JWT_SECRET: ${JWT_SECRET_KEY:?Set JWT_SECRET_KEY}
     ports:
-      - '127.0.0.1:${AGENTOPS_OTLP_PORT:-32172}:4318'
+      - '127.0.0.1:${AGENTOPS_OTLP_PORT:-38623}:4318'
     depends_on:
       initialize:
         condition: service_completed_successfully
@@ -103,9 +103,9 @@ services:
       context: ./dashboard
       dockerfile: ../local/Dockerfile.dashboard
       args:
-        NEXT_PUBLIC_API_URL: http://localhost:${AGENTOPS_API_PORT:-32171}
+        NEXT_PUBLIC_API_URL: http://localhost:${AGENTOPS_API_PORT:-38622}
     ports:
-      - '127.0.0.1:${AGENTOPS_DASHBOARD_PORT:-32170}:3000'
+      - '127.0.0.1:${AGENTOPS_DASHBOARD_PORT:-38621}:3000'
     depends_on:
       api:
         condition: service_healthy

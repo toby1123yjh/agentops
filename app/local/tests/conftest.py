@@ -5,8 +5,8 @@ os.environ.update({
     "AGENTOPS_LOCAL_MODE": "true",
     "AUTH_COOKIE_SECRET": "local-cookie-secret-for-tests-only-123456789",
     "JWT_SECRET_KEY": "local-jwt-secret-for-tests-only-123456789",
-    "APP_DOMAIN": "localhost:32170",
-    "API_DOMAIN": "localhost:32171",
+    "APP_DOMAIN": "localhost:38621",
+    "API_DOMAIN": "localhost:38622",
     "PROTOCOL": "http",
     "GITHUB_ACTIONS": "true",
 })

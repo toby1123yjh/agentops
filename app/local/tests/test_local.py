@@ -22,7 +22,7 @@ def client(monkeypatch):
     monkeypatch.setattr(local_auth, "get_session_user", lambda sid: sessions.get(str(sid)))
     monkeypatch.setattr(local_auth, "update_session", lambda sid, ttl: sessions.pop(str(sid), None) if ttl is None else None)
     local_app._attempts.clear()
-    with TestClient(local_app.app, base_url="http://localhost:32171") as test_client:
+    with TestClient(local_app.app, base_url="http://localhost:38622") as test_client:
         yield test_client
 
 
@@ -138,27 +138,35 @@ def test_local_compose_is_isolated():
         if build:
             assert (root / build['context'] / build['dockerfile']).resolve().is_file()
     assert compose['services']['api']['depends_on']['initialize']['condition'] == 'service_completed_successfully'
-    assert compose['services']['dashboard']['ports'] == ['127.0.0.1:${AGENTOPS_DASHBOARD_PORT:-32170}:3000']
-    assert compose['services']['api']['ports'] == ['127.0.0.1:${AGENTOPS_API_PORT:-32171}:8000']
-    assert compose['services']['otelcollector']['ports'] == ['127.0.0.1:${AGENTOPS_OTLP_PORT:-32172}:4318']
+    assert compose['services']['dashboard']['ports'] == ['127.0.0.1:${AGENTOPS_DASHBOARD_PORT:-38621}:3000']
+    assert compose['services']['api']['ports'] == ['127.0.0.1:${AGENTOPS_API_PORT:-38622}:8000']
+    assert compose['services']['otelcollector']['ports'] == ['127.0.0.1:${AGENTOPS_OTLP_PORT:-38623}:4318']
     assert len(compose['volumes']) == 2
 
 
-def test_server_compose_uses_external_postgres():
+def test_server_compose_uses_isolated_databases():
     root = Path(__file__).resolve().parents[2]
     compose = yaml.safe_load((root / 'compose.server.yaml').read_text(encoding='utf-8'))
-    assert 'postgres' not in compose['services']
-    assert compose['networks']['database']['external'] is True
-    assert compose['networks']['database']['name'] == '${AGENTOPS_DB_NETWORK:?Set AGENTOPS_DB_NETWORK}'
-    for service_name in ('initialize', 'api'):
-        assert 'database' in compose['services'][service_name]['networks']
+    services = compose['services']
+    assert not compose.get('networks')
+    for service_name in ('postgres', 'clickhouse'):
+        assert not services[service_name].get('ports')
+        assert services['initialize']['depends_on'][service_name]['condition'] == 'service_healthy'
     environment = compose['services']['api']['environment']
-    assert environment['POSTGRES_HOST'] == '${POSTGRES_HOST:?Set POSTGRES_HOST}'
+    assert environment['POSTGRES_HOST'] == 'postgres'
     assert environment['POSTGRES_DB'] == '${POSTGRES_DB:-agentops}'
+    assert environment['POSTGRES_PASSWORD'] == services['postgres']['environment']['POSTGRES_PASSWORD']
+    assert environment['CLICKHOUSE_HOST'] == 'clickhouse'
+    assert environment['CLICKHOUSE_USER'] == services['clickhouse']['environment']['CLICKHOUSE_USER']
+    assert environment['CLICKHOUSE_PASSWORD'] == services['clickhouse']['environment']['CLICKHOUSE_PASSWORD']
+    for service in services.values():
+        assert service.get('network_mode') != 'host'
+        for port in service.get('ports', []):
+            assert port.startswith('127.0.0.1:')
     assert compose['services']['dashboard']['build']['args']['NEXT_PUBLIC_API_URL'] == (
         '${AGENTOPS_PUBLIC_URL:?Set AGENTOPS_PUBLIC_URL}'
     )
-    assert list(compose['volumes']) == ['server-clickhouse']
+    assert set(compose['volumes']) == {'server-postgres', 'server-clickhouse'}
 
 
 def test_bootstrap_rejects_weak_password(monkeypatch):

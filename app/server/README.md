@@ -1,63 +1,57 @@
 # 服务器部署
 
-此模式复用现有 PostgreSQL 实例，但使用独立空数据库和独立非超级用户。Compose 不创建 PostgreSQL 容器，也不管理它的数据卷。ClickHouse 仍由 AgentOps 独立管理。
+AgentOps 使用独立 Compose，统一启动 PostgreSQL、ClickHouse、API、Dashboard 和 OTLP Collector。数据库及数据卷由本项目管理，不需要手动创建数据库或连接外部数据库网络。
 
-## 1. 准备 PostgreSQL
+## 1. 配置
 
-由 PostgreSQL 管理员创建专用账号和数据库。不要使用 cestc-claw 的业务账号或业务数据库。
-
-```sql
-CREATE ROLE agentops LOGIN PASSWORD '<独立随机密码>';
-CREATE DATABASE agentops OWNER agentops;
-```
-
-数据库必须为空。AgentOps 初始化程序会拒绝覆盖已有业务表的数据库。
-
-## 2. 准备 Docker 网络
-
-创建只用于 AgentOps 访问数据库的外部网络，并把现有 PostgreSQL 容器接入该网络。将 `<postgres-container>` 替换为真实容器名。
-
-```sh
-docker network create agentops-db
-docker network connect --alias postgres-agentops agentops-db <postgres-container>
-```
-
-重复执行 `docker network connect` 会报已连接；先用 `docker network inspect agentops-db` 核对即可。不要断开 PostgreSQL 原有网络。
-
-## 3. 配置
-
-在 `app/` 目录执行：
+首次部署在仓库 `app/` 目录执行：
 
 ```sh
 cp server/env.example .env.server-mode
 chmod 600 .env.server-mode
 ```
 
-填写真实域名、独立数据库凭据、登录账号和随机密钥。`AGENTOPS_PUBLIC_URL` 必须是完整的 HTTP 或 HTTPS origin，不能带路径。
+填写访问地址、管理员账号、数据库密码和认证密钥。管理员密码至少 12 位；`AUTH_COOKIE_SECRET` 和 `JWT_SECRET_KEY` 分别使用至少 32 位的随机字符串。
 
-HTTP 测试环境示例：
-
-```text
-AGENTOPS_PUBLIC_URL=http://agentops-dev.cestc.cn
-```
-
-HTTPS 生产环境示例：
+`AGENTOPS_PUBLIC_URL` 使用 Nginx 对外提供的完整 HTTP 或 HTTPS origin，不能带路径。测试环境使用 HTTP，生产环境使用已有 Nginx 的 HTTPS 和证书。例如：
 
 ```text
-AGENTOPS_PUBLIC_URL=https://agentops.cestc.cn
+AGENTOPS_PUBLIC_URL=http://agentops.example.internal
 ```
 
 Dashboard 在镜像构建时写入公开 URL。修改该变量后必须重新构建 Dashboard，不能只重启容器。
 
-## 4. 启动
+宿主机默认端口：
+
+| 服务 | 地址 | 用途 |
+| --- | --- | --- |
+| Dashboard | `127.0.0.1:38621` | 页面及 Dashboard 内置 API 转发 |
+| API | `127.0.0.1:38622` | API、SDK 鉴权及健康检查 |
+| OTLP Collector | `127.0.0.1:38623` | Trace / Span 数据采集 |
+
+PostgreSQL 和 ClickHouse 不发布宿主机端口。`POSTGRES_PORT=5432` 是容器内部端口。
+
+## 2. Nginx 转发
+
+同机宿主机 Nginx 将页面请求转到 `http://127.0.0.1:38621`，将 `/auth/`、`/opsboard/`、`/v3/` 和 `/v4/` 请求转到 `http://127.0.0.1:38622`，保留原始路径。转发时设置 `Host`、`X-Forwarded-For` 和 `X-Forwarded-Proto`，公开地址与 `AGENTOPS_PUBLIC_URL` 保持一致。
+
+Dashboard 的 `/api-v4/` 和 `/api-metrics/` 路径已有内部 API 转发，交给 Dashboard 处理。
+
+端口只绑定宿主机 loopback。若 Nginx 在另一台服务器或容器内，需要另行配置可达的网络地址，不能用该环境自己的 `127.0.0.1`。
+
+OTLP 不通过此页面代理公开。宿主机进程使用 `http://127.0.0.1:38623/v1/traces`；cestc-claw 等容器里的 SDK 需要可达的容器网络地址，并同时配置 API 端点及项目 API Key。
+
+## 3. 启动
+
+在 `app/` 目录执行，明确指定服务器模式的 Compose 文件：
 
 ```sh
 docker compose --env-file .env.server-mode -f compose.server.yaml config --quiet
 docker compose --env-file .env.server-mode -f compose.server.yaml up -d --build
-docker compose --env-file .env.server-mode -f compose.server.yaml ps
+docker compose --env-file .env.server-mode -f compose.server.yaml ps -a
 ```
 
-初始化会等待外部 PostgreSQL，默认最多等待 60 秒。首次成功后建立 AgentOps 表、管理员和项目；重复启动不会重设密码或 API Key。
+初始化等待两套数据库健康后建立表、管理员和项目。`initialize` 以 `Exited (0)` 结束是正常结果，其余五个服务保持运行。重复初始化不会重设已有管理员密码或 API Key。
 
 查看日志：
 
@@ -65,12 +59,22 @@ docker compose --env-file .env.server-mode -f compose.server.yaml ps
 docker compose --env-file .env.server-mode -f compose.server.yaml logs --tail=200 initialize api dashboard otelcollector
 ```
 
-宿主机默认只在 loopback 发布 `32170`、`32171` 和 `32172`。Nginx 代理 Dashboard 和 API。OTLP 不对公网开放；同机服务使用 `http://127.0.0.1:32172/v1/traces`。
+## 4. 更新已有部署
 
-日常停止但保留 ClickHouse 数据：
+保留服务器现有 `.env.server-mode`，不要用示例覆盖它。切换本次端口时修改以下三项，并同步 Nginx 的转发目标：
+
+```text
+AGENTOPS_DASHBOARD_PORT=38621
+AGENTOPS_API_PORT=38622
+AGENTOPS_OTLP_PORT=38623
+```
+
+拉取代码、修改配置后，重新执行上述 `up -d --build` 命令。无需删除旧容器或数据库卷，Compose 会重建有变化的服务。
+
+日常停止并保留数据：
 
 ```sh
 docker compose --env-file .env.server-mode -f compose.server.yaml stop
 ```
 
-不要执行 `down -v`，它会删除 AgentOps ClickHouse 数据卷。
+不要执行 `down -v`，它会删除 PostgreSQL 和 ClickHouse 数据卷。
