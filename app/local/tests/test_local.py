@@ -146,8 +146,18 @@ def test_local_compose_is_isolated():
 
 def test_server_compose_uses_isolated_databases():
     root = Path(__file__).resolve().parents[2]
-    compose = yaml.safe_load((root / 'compose.server.yaml').read_text(encoding='utf-8'))
+    compose = yaml.safe_load((root / 'compose.yaml').read_text(encoding='utf-8'))
+    legacy = yaml.safe_load((root / 'compose.server.yaml').read_text(encoding='utf-8'))
     services = compose['services']
+    assert compose['name'] == legacy['name'] == 'agentops-server'
+    assert compose['volumes'] == legacy['volumes']
+    assert set(services) == set(legacy['services'])
+    for service_name, service in legacy['services'].items():
+        assert service == {'extends': {'file': 'compose.yaml', 'service': service_name}}
+    for service in services.values():
+        build = service.get('build')
+        if build:
+            assert (root / build['context'] / build['dockerfile']).resolve().is_file()
     assert not compose.get('networks')
     for service_name in ('postgres', 'clickhouse'):
         assert not services[service_name].get('ports')

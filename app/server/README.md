@@ -7,8 +7,8 @@ AgentOps 使用独立 Compose，统一启动 PostgreSQL、ClickHouse、API、Das
 首次部署在仓库 `app/` 目录执行：
 
 ```sh
-cp server/env.example .env.server-mode
-chmod 600 .env.server-mode
+cp .env.example .env
+chmod 600 .env
 ```
 
 填写访问地址、管理员账号、数据库密码和认证密钥。管理员密码至少 12 位；`AUTH_COOKIE_SECRET` 和 `JWT_SECRET_KEY` 分别使用至少 32 位的随机字符串。
@@ -43,12 +43,11 @@ OTLP 不通过此页面代理公开。宿主机进程使用 `http://127.0.0.1:38
 
 ## 3. 启动
 
-在 `app/` 目录执行，明确指定服务器模式的 Compose 文件：
+在 `app/` 目录执行。Compose 自动读取默认 `compose.yaml` 和 `.env`：
 
 ```sh
-docker compose --env-file .env.server-mode -f compose.server.yaml config --quiet
-docker compose --env-file .env.server-mode -f compose.server.yaml up -d --build
-docker compose --env-file .env.server-mode -f compose.server.yaml ps -a
+docker compose up -d --build
+docker compose ps -a
 ```
 
 初始化等待两套数据库健康后建立表、管理员和项目。`initialize` 以 `Exited (0)` 结束是正常结果，其余五个服务保持运行。重复初始化不会重设已有管理员密码或 API Key。
@@ -56,12 +55,19 @@ docker compose --env-file .env.server-mode -f compose.server.yaml ps -a
 查看日志：
 
 ```sh
-docker compose --env-file .env.server-mode -f compose.server.yaml logs --tail=200 initialize api dashboard otelcollector
+docker compose logs --tail=200 initialize api dashboard otelcollector
 ```
 
 ## 4. 更新已有部署
 
-保留服务器现有 `.env.server-mode`，不要用示例覆盖它。切换本次端口时修改以下三项，并同步 Nginx 的转发目标：
+使用旧 `.env.server-mode` 的服务器，将现有配置复制成 `.env`。保留原数据库密码、登录账号和认证密钥；不要用示例覆盖已有配置。在 `app/` 目录执行：
+
+```sh
+cp -n .env.server-mode .env
+chmod 600 .env
+```
+
+`cp -n` 会保留已经存在的 `.env`；已有该文件时，手动补齐所需 AgentOps 变量。切换端口时修改以下三项，并同步 Nginx 的转发目标：
 
 ```text
 AGENTOPS_DASHBOARD_PORT=38621
@@ -69,12 +75,14 @@ AGENTOPS_API_PORT=38622
 AGENTOPS_OTLP_PORT=38623
 ```
 
-拉取代码、修改配置后，重新执行上述 `up -d --build` 命令。无需删除旧容器或数据库卷，Compose 会重建有变化的服务。
+拉取代码、修改配置后，重新执行 `docker compose up -d --build`。项目名继续使用 `agentops-server`，沿用原 PostgreSQL 和 ClickHouse 数据卷；无需删除旧容器或数据库卷。
+
+旧的 `compose.server.yaml` 仍可用于原有带参数命令，它引用默认配置，不再维护第二套服务定义。
 
 日常停止并保留数据：
 
 ```sh
-docker compose --env-file .env.server-mode -f compose.server.yaml stop
+docker compose stop
 ```
 
 不要执行 `down -v`，它会删除 PostgreSQL 和 ClickHouse 数据卷。

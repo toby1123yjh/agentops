@@ -124,6 +124,7 @@ celerybeat.pid
 
 # Environments
 .env*
+!.env.cloud.example
 .venv*
 env/
 venv/

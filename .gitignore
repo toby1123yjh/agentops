@@ -2,6 +2,7 @@
 .venv-local/
 .env.local-mode
 .env.server-mode
+.env.cloud
 cache.db
 __pycache__/
 *.py[cod]
