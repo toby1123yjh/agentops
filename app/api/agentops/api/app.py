@@ -39,6 +39,8 @@ app.include_router(v1.router)
 app.include_router(v2.router)
 app.include_router(v3.router)
 app.include_router(v4.router)
+from agentops.tool_analysis.views import ingest_router
+app.include_router(ingest_router)
 
 
 # Health Check

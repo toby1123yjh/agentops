@@ -66,6 +66,8 @@ def initialize_postgres() -> None:
     for attempt in range(1, attempts + 1):
         try:
             bootstrap()
+            from agentops.tool_analysis.migrate import migrate
+            migrate()
             return
         except OperationalError:
             if attempt == attempts:

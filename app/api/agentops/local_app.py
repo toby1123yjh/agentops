@@ -88,4 +88,6 @@ def health():
 app.include_router(auth_router)
 app.include_router(v3.router)
 app.include_router(v4.router)
+from agentops.tool_analysis.views import ingest_router
+app.include_router(ingest_router)
 app.mount("/opsboard", opsboard_app)

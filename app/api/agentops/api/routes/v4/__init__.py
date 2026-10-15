@@ -68,5 +68,8 @@ if LOCAL_MODE:
 register_routes(api_router, route_config, prefix="/v4")
 router.include_router(api_router)
 
+from agentops.tool_analysis.views import router as tool_analysis_router
+router.include_router(tool_analysis_router)
+
 if not LOCAL_MODE:
     router.include_router(stripe_webhooks_router)

@@ -17,7 +17,7 @@ interface ToolData {
     result?: string;
     output?: string;
     error?: string;
-    status: 'succeeded' | 'failed';
+    status: 'succeeded' | 'failed' | 'unknown' | 'pending' | 'rejected' | 'cancelled';
     duration: number;
     // Agno-specific fields
     description?: string;
@@ -33,7 +33,7 @@ interface ToolData {
 }
 
 // Custom code viewer component for displaying code content
-const CodeViewer = ({ code }: { code: string }) => {
+export const CodeViewer = ({ code }: { code: string }) => {
     return (
         <pre className="mb-3 overflow-x-hidden overflow-y-auto whitespace-pre-wrap break-words rounded-md border border-gray-200 bg-gray-50 p-3 text-sm shadow-sm dark:border-slate-700/80 dark:bg-slate-900">
             <code className="language-json">{code}</code>
@@ -133,6 +133,26 @@ export const extractUnifiedToolData = (span: ISpan | null): ToolData | null => {
     if (!span) return null;
 
     const spanAttributes = span.span_attributes || {};
+
+    const observation = spanAttributes.agentops?.tool;
+    if (Number(observation?.schema_version) === 1) {
+      const outcomes: Record<string, ToolData['status']> = {
+        success: 'succeeded',
+        failure: 'failed',
+        pending: 'pending',
+        rejected: 'rejected',
+        cancelled: 'cancelled',
+        unknown: 'unknown',
+      };
+      return {
+        name: spanAttributes.tool?.name || span.span_name || 'Unknown Tool',
+        parameters: spanAttributes.tool?.parameters,
+        result: spanAttributes.tool?.result,
+        error: span.status_message || '',
+        status: outcomes[observation.execution_outcome] || 'unknown',
+        duration: span.duration ? span.duration / 1000000 : 0,
+      };
+    }
 
     // ===== AGNO Framework Tool Processing =====
     // Agno has its own specific format with detailed function metadata

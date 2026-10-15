@@ -153,7 +153,9 @@ export function filterByDateRange<T>(
 }
 
 export function isSafariBrowser() {
-  return /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+  return (
+    typeof navigator !== 'undefined' && /^((?!chrome|android).)*safari/i.test(navigator.userAgent)
+  );
 }
 
 export const getDurationBar = (duration: number) => {

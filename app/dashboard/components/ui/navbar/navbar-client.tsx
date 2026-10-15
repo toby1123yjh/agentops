@@ -58,6 +58,7 @@ const dataLinksConfig: NavLinkConfig[] = [
   { title: 'Projects', href: '/projects', IconComponent: ProjectsIcon },
   { title: 'Traces', href: '/traces', IconComponent: DrilldownIcon },
   { title: 'Metrics', href: '/overview', IconComponent: OverviewIcon },
+  { title: 'Tool Analysis', href: '/tool-analysis', IconComponent: DrilldownIcon },
   // { title: 'Logs', href: '/logs', IconComponent: LogsIcon },
   {
     title: 'MCP',
@@ -92,7 +93,9 @@ function NavbarClientComponent(props: { mobile: boolean }) {
   const dataLinks: ILink[] = useMemo(() => {
     return dataLinksConfig
       .filter(
-        (config) => !isLocalMode || ['/projects', '/traces', '/overview'].includes(config.href),
+        (config) =>
+          !isLocalMode ||
+          ['/projects', '/traces', '/overview', '/tool-analysis'].includes(config.href),
       )
       .map((config) => {
         const isActive = pathname?.startsWith(config.href);
