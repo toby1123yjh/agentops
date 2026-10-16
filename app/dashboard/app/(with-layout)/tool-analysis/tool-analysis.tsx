@@ -31,29 +31,29 @@ import {
 } from '@/lib/api/tool-analysis';
 
 const number = (value: number | null | undefined) =>
-  value == null ? '未采集' : value.toLocaleString(undefined, { maximumFractionDigits: 1 });
+  value == null ? 'Not collected' : value.toLocaleString(undefined, { maximumFractionDigits: 1 });
 const percent = (value: number | null | undefined) =>
-  value == null ? '无样本' : `${(value * 100).toFixed(1)}%`;
+  value == null ? 'No samples' : `${(value * 100).toFixed(1)}%`;
 const duration = (value: number | null | undefined) =>
-  value == null ? '未采集' : `${(value / 1000).toFixed(3)}s`;
+  value == null ? 'Not collected' : `${(value / 1000).toFixed(3)}s`;
 const selectStyle = 'h-9 rounded-md border bg-background px-3 text-sm';
 const outcomeNames: Record<string, string> = {
-  pending: '待完成',
-  success: '成功',
-  failure: '失败',
-  rejected: '拒绝',
-  cancelled: '取消',
-  unknown: '未知',
+  pending: 'Pending',
+  success: 'Success',
+  failure: 'Failure',
+  rejected: 'Rejected',
+  cancelled: 'Cancelled',
+  unknown: 'Unknown',
 };
 const lifecycleNames: Record<string, string> = {
-  requested: '已请求',
-  awaiting_approval: '待审批',
-  queued: '排队中',
-  running: '执行中',
-  completed: '已结束',
-  rejected: '已拒绝',
-  cancelled: '已取消',
-  interrupted: '已中断',
+  requested: 'Requested',
+  awaiting_approval: 'Awaiting Approval',
+  queued: 'Queued',
+  running: 'Running',
+  completed: 'Completed',
+  rejected: 'Rejected',
+  cancelled: 'Cancelled',
+  interrupted: 'Interrupted',
 };
 
 function Pagination({
@@ -68,7 +68,7 @@ function Pagination({
   return (
     <div className="flex items-center justify-end gap-3 py-4 text-sm">
       <span>
-        共 {total} 条 · 第 {Math.floor(offset / 50) + 1} 页
+        {total} records · Page {Math.floor(offset / 50) + 1}
       </span>
       <Button
         variant="outline"
@@ -76,7 +76,7 @@ function Pagination({
         disabled={!offset}
         onClick={() => setOffset(Math.max(0, offset - 50))}
       >
-        上一页
+        Previous
       </Button>
       <Button
         variant="outline"
@@ -84,7 +84,7 @@ function Pagination({
         disabled={offset + 50 >= total}
         onClick={() => setOffset(offset + 50)}
       >
-        下一页
+        Next
       </Button>
     </div>
   );
@@ -94,10 +94,10 @@ function SummaryLine({ data }: { data: Summary }) {
   return (
     <dl className="grid grid-cols-2 gap-5 border-y py-4 md:grid-cols-4">
       {[
-        ['请求次数', number(data.request_count)],
-        ['已执行调用', number(data.executed_call_count)],
-        ['已知结果成功率', percent(data.known_success_rate)],
-        ['执行 P95', duration(data.execution_p95_ms)],
+        ['Requests', number(data.request_count)],
+        ['Executed Calls', number(data.executed_call_count)],
+        ['Success Rate (Known Outcomes)', percent(data.known_success_rate)],
+        ['P95 Execution Time', duration(data.execution_p95_ms)],
       ].map(([label, value]) => (
         <div key={label}>
           <dt className="text-xs text-muted-foreground">{label}</dt>
@@ -144,22 +144,37 @@ function StateSummary({
   );
   return (
     <section className="space-y-3">
-      <h2 className="font-medium">状态汇总</h2>
+      <h2 className="font-medium">Status Summary</h2>
       <p className="text-xs text-muted-foreground">
-        按每次调用的最新状态计数。生命周期 8 类，执行结果 6 类；两层分别统计，不能相加。
+        Counts use the latest state of each call. The 8 lifecycle states and 6 execution outcomes
+        are counted separately; do not add them together.
       </p>
-      {group('生命周期', data.lifecycle_summary, lifecycle, setLifecycle)}
-      {group('执行结果', data.outcome_summary, outcome, setOutcome)}
+      {group('Lifecycle', data.lifecycle_summary, lifecycle, setLifecycle)}
+      {group('Outcome', data.outcome_summary, outcome, setOutcome)}
       <details className="text-sm">
-        <summary className="cursor-pointer text-muted-foreground">状态含义与流转</summary>
+        <summary className="cursor-pointer text-muted-foreground">
+          State Definitions and Transitions
+        </summary>
         <div className="mt-3 space-y-2 text-muted-foreground">
-          <p>正常：已请求 → 排队中 → 执行中 → 已结束。无需排队时可直接执行。</p>
-          <p>需审批：已请求 → 待审批 → 排队中 / 执行中；审批拒绝进入已拒绝。</p>
-          <p>执行前拒绝进入已拒绝。取消进入已取消。进程中断、恢复后无法确认终态时进入已中断。</p>
-          <p>兼容入口可在排队后检查审批；执行器内部校验拒绝时，会纠正为未执行的已拒绝。</p>
+          <p>Normal flow: Requested → Queued → Running → Completed. Calls can skip the queue.</p>
           <p>
-            已结束包含成功和失败。超时是失败的原因。已中断通常结果未知；未上报状态不等于失败。重试作为同一调用的
-            Attempt 记录，不把生命周期重置为已请求。
+            Approval required: Requested → Awaiting Approval → Queued / Running. Denied approval
+            moves the call to Rejected.
+          </p>
+          <p>
+            Calls rejected before execution are marked Rejected. Cancelled calls are marked
+            Cancelled. Calls interrupted by a process exit or with no confirmed terminal state after
+            recovery are marked Interrupted.
+          </p>
+          <p>
+            Legacy entry points may check approval after queuing. Validation failures inside the
+            executor are recorded as Rejected without execution.
+          </p>
+          <p>
+            Completed includes successful and failed calls. A timeout is a failure reason.
+            Interrupted calls usually have an unknown outcome; a missing status does not indicate
+            failure. Retries are recorded as attempts within the same call and do not reset its
+            lifecycle to Requested.
           </p>
           <dl className="grid gap-x-4 gap-y-1 sm:grid-cols-[auto_1fr]">
             {Object.entries(data.transitions).map(([from, tos]) => (
@@ -168,7 +183,7 @@ function StateSummary({
                 <dd>
                   {tos.length
                     ? tos.map((to) => lifecycleNames[to]).join(' / ')
-                    : '终态；后续仅补充证据与结果信息'}
+                    : 'Terminal state; only evidence and result details can be updated'}
                 </dd>
               </Fragment>
             ))}
@@ -197,30 +212,30 @@ function CallEvidence({
         signal,
       ),
   });
-  if (query.isLoading) return <p role="status">正在读取调用详情…</p>;
-  if (query.error) return <p role="alert">调用详情读取失败：{query.error.message}</p>;
+  if (query.isLoading) return <p role="status">Loading call details…</p>;
+  if (query.error) return <p role="alert">Failed to load call details: {query.error.message}</p>;
   const data = query.data;
   if (!data) return null;
   const pairs = [
     ['Tool Definition ID', data.tool_definition_id],
     ['Tool Call ID', data.tool_call_id],
     ['Session ID', data.session_id],
-    ['会话标题', data.session_title],
+    ['Session Title', data.session_title],
     ['Turn ID', data.turn_id],
-    ['本轮输入', data.turn_input_preview],
-    ['生命周期', lifecycleNames[data.lifecycle_status]],
-    ['执行结果', outcomeNames[data.execution_outcome]],
+    ['Turn Input', data.turn_input_preview],
+    ['Lifecycle', lifecycleNames[data.lifecycle_status]],
+    ['Execution Outcome', outcomeNames[data.execution_outcome]],
     ['Trace ID', data.trace_id],
     ['Span ID', data.span_id],
   ];
   return (
     <div className="min-w-0 space-y-4 bg-muted/30 p-4">
-      <h3 className="font-medium">Tool Call / 单次调用</h3>
+      <h3 className="font-medium">Tool Call</h3>
       <dl className="grid gap-x-5 gap-y-2 text-sm sm:grid-cols-[140px_minmax(0,1fr)]">
         {pairs.map(([label, value]) => (
           <Fragment key={label}>
             <dt className="text-muted-foreground">{label}</dt>
-            <dd className="break-all">{value || '未采集'}</dd>
+            <dd className="break-all">{value || 'Not collected'}</dd>
           </Fragment>
         ))}
       </dl>
@@ -229,37 +244,40 @@ function CallEvidence({
           className="text-primary underline"
           href={`/traces?trace_id=${encodeURIComponent(data.trace_id)}`}
         >
-          View Trace / 查看 Trace
+          View Trace
         </Link>
       )}
       <div className="grid min-w-0 gap-4 lg:grid-cols-2">
         <section>
-          <h4>Parameters / 参数</h4>
+          <h4>Parameters</h4>
           <CodeViewer
             code={
               data.parameters_preview == null
-                ? '未采集'
+                ? 'Not collected'
                 : JSON.stringify(data.parameters_preview, null, 2)
             }
           />
         </section>
         <section>
-          <h4>Result / 结果</h4>
+          <h4>Result</h4>
           <CodeViewer
             code={
-              data.result_preview == null ? '未采集' : JSON.stringify(data.result_preview, null, 2)
+              data.result_preview == null
+                ? 'Not collected'
+                : JSON.stringify(data.result_preview, null, 2)
             }
           />
         </section>
       </div>
       {data.error_code && (
         <p>
-          Error / 错误：{data.error_stage} · {data.error_code}
+          Error: {data.error_stage} · {data.error_code}
         </p>
       )}
       {Boolean(data.revision_gaps?.length) && (
         <p className="text-sm text-muted-foreground">
-          事件版本有缺口：{data.revision_gaps?.map((gap) => `${gap.from}–${gap.to}`).join('、')}
+          Missing event revisions:{' '}
+          {data.revision_gaps?.map((gap) => `${gap.from}–${gap.to}`).join(', ')}
         </p>
       )}
       <ol className="space-y-1 text-sm">
@@ -270,7 +288,7 @@ function CallEvidence({
         ))}
       </ol>
       <details>
-        <summary className="cursor-pointer">Attempt / 状态证据与原始字段</summary>
+        <summary className="cursor-pointer">Attempts, Evidence, and Raw Data</summary>
         <CodeViewer code={JSON.stringify(data, null, 2)} />
       </details>
     </div>
@@ -351,8 +369,8 @@ function ToolDetailPage({
   useEffect(() => {
     if (calls.data?.as_of) asOf.current = calls.data.as_of;
   }, [calls.data]);
-  if (detail.isLoading) return <p role="status">正在读取工具详情…</p>;
-  if (detail.error) return <p role="alert">工具详情读取失败：{detail.error.message}</p>;
+  if (detail.isLoading) return <p role="status">Loading tool details…</p>;
+  if (detail.error) return <p role="alert">Failed to load tool details: {detail.error.message}</p>;
   const data = detail.data;
   if (!data) return null;
   const search = callSearchFields.find((field) => field.key === searchField)!;
@@ -360,18 +378,19 @@ function ToolDetailPage({
   return (
     <div className="space-y-6">
       <Link className="text-sm text-primary" href="/tool-analysis">
-        ← 工具列表
+        ← Tool List
       </Link>
       <header>
         <h1 className="text-2xl font-medium">{data.tool.tool_name || toolKey}</h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          {data.tool.description || '未采集工具说明'}
+          {data.tool.description || 'Tool description not collected'}
         </p>
         <p className="mt-2 break-all font-mono text-xs">
-          Tool Definition ID：{data.tool.tool_definition_id || '未解析'} · {data.tool.tool_type} ·{' '}
+          Tool Definition ID: {data.tool.tool_definition_id || 'Unresolved'} · {data.tool.tool_type}{' '}
+          ·{' '}
           {data.tool.versions.length > 1
-            ? `多个版本（${data.tool.versions.map((v) => v || '未采集').join('、')}）`
-            : data.tool.implementation_version || '实现版本未采集'}
+            ? `Multiple versions (${data.tool.versions.map((v) => v || 'Not collected').join(', ')})`
+            : data.tool.implementation_version || 'Implementation version not collected'}
         </p>
       </header>
       <SummaryLine data={data.summary} />
@@ -389,18 +408,19 @@ function ToolDetailPage({
         }}
       />
       <section>
-        <h2 className="mb-2 font-medium">工具上报状态</h2>
+        <h2 className="mb-2 font-medium">Reported Tool Statuses</h2>
         <p className="mb-2 text-xs text-muted-foreground">
-          仅统计已观察到执行的调用。状态名称来自埋点；未执行的拒绝和审批等待见状态汇总。
+          Only calls observed to execute are counted. Status labels come from instrumentation. Calls
+          rejected before execution or awaiting approval are included in the status summary.
         </p>
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>工具原始状态</TableHead>
-              <TableHead>平台结果</TableHead>
-              <TableHead>实现版本</TableHead>
-              <TableHead>调用数</TableHead>
-              <TableHead>占比</TableHead>
+              <TableHead>Raw Tool Status</TableHead>
+              <TableHead>Execution Outcome</TableHead>
+              <TableHead>Implementation Version</TableHead>
+              <TableHead>Calls</TableHead>
+              <TableHead>Share</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -417,15 +437,15 @@ function ToolDetailPage({
                       reset();
                     }}
                   >
-                    {group.tool_status?.label || group.tool_status?.code || '未上报'}
+                    {group.tool_status?.label || group.tool_status?.code || 'Not reported'}
                   </button>
                   <div className="text-xs text-muted-foreground">
                     {group.tool_status?.namespace} · {group.tool_status?.code || '—'}
-                    {group.evidence_summary.conflict_count > 0 ? ' · 存在证据冲突' : ''}
+                    {group.evidence_summary.conflict_count > 0 ? ' · Conflicting evidence' : ''}
                   </div>
                 </TableCell>
                 <TableCell>{outcomeNames[group.execution_outcome]}</TableCell>
-                <TableCell>{group.implementation_version || '未采集'}</TableCell>
+                <TableCell>{group.implementation_version || 'Not collected'}</TableCell>
                 <TableCell>{group.call_count}</TableCell>
                 <TableCell>{percent(group.ratio)}</TableCell>
               </TableRow>
@@ -433,15 +453,15 @@ function ToolDetailPage({
           </TableBody>
         </Table>
         {!data.status_groups.length && (
-          <p className="py-4 text-sm text-muted-foreground">当前范围没有已执行调用</p>
+          <p className="py-4 text-sm text-muted-foreground">No executed calls in this scope</p>
         )}
       </section>
       <section className="space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h2 className="font-medium">
-            调用记录
+            Call History
             {status
-              ? ` · ${selected?.tool_status?.label || selected?.tool_status?.code || '未上报'}`
+              ? ` · ${selected?.tool_status?.label || selected?.tool_status?.code || 'Not reported'}`
               : ''}
           </h2>
           {(status || lifecycle || outcome) && (
@@ -455,16 +475,16 @@ function ToolDetailPage({
                 reset();
               }}
             >
-              清除调用状态筛选
+              Clear Call Filters
             </Button>
           )}
         </div>
         <div className="flex max-w-2xl flex-wrap items-center gap-2">
           <label className="text-sm">
-            搜索{' '}
+            Search{' '}
             <select
               className={selectStyle}
-              aria-label="搜索字段"
+              aria-label="Search field"
               value={searchField}
               onChange={(e) => {
                 setSearchField(e.target.value);
@@ -486,7 +506,7 @@ function ToolDetailPage({
             maxLength={256}
             value={input}
             placeholder={search.placeholder}
-            aria-label={`搜索${search.label}`}
+            aria-label={`Search ${search.label}`}
             onCompositionStart={() => setComposing(true)}
             onCompositionEnd={(e) => {
               setComposing(false);
@@ -497,25 +517,26 @@ function ToolDetailPage({
         </div>
         {(lifecycle || outcome) && (
           <p className="text-xs text-muted-foreground">
-            当前筛选：{lifecycleNames[lifecycle]} {outcomeNames[outcome]} · 与搜索条件取交集
+            Active filters: {lifecycleNames[lifecycle]} {outcomeNames[outcome]} · Combined with the
+            search criteria
           </p>
         )}
         {calls.isFetching && (
           <p role="status" className="text-sm text-muted-foreground">
-            正在读取调用记录…
+            Loading call history…
           </p>
         )}
-        {calls.error && <p role="alert">调用记录读取失败：{calls.error.message}</p>}
+        {calls.error && <p role="alert">Failed to load call history: {calls.error.message}</p>}
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>调用 / 时间</TableHead>
+              <TableHead>Call / Time</TableHead>
               <TableHead>Agent</TableHead>
               <TableHead>Session / Turn</TableHead>
-              <TableHead>生命周期 / 执行结果</TableHead>
-              <TableHead>工具状态</TableHead>
-              <TableHead>执行耗时</TableHead>
-              <TableHead>结果摘要</TableHead>
+              <TableHead>Lifecycle / Outcome</TableHead>
+              <TableHead>Tool Status</TableHead>
+              <TableHead>Execution Time</TableHead>
+              <TableHead>Result Summary</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -535,11 +556,11 @@ function ToolDetailPage({
                       {new Date(call.requested_at).toLocaleString()}
                     </div>
                   </TableCell>
-                  <TableCell>{call.agent_name || call.agent_id || '未采集'}</TableCell>
+                  <TableCell>{call.agent_name || call.agent_id || 'Not collected'}</TableCell>
                   <TableCell className="max-w-56 break-all font-mono text-xs">
-                    {call.session_id || 'Session 未采集'}
+                    {call.session_id || 'Session not collected'}
                     <div className="mt-1 text-muted-foreground">
-                      {call.turn_id || 'Turn 未采集'}
+                      {call.turn_id || 'Turn not collected'}
                     </div>
                   </TableCell>
                   <TableCell>
@@ -547,10 +568,10 @@ function ToolDetailPage({
                     <div>{outcomeNames[call.execution_outcome]}</div>
                   </TableCell>
                   <TableCell>
-                    {call.tool_status?.label || call.tool_status?.code || '未上报'}
+                    {call.tool_status?.label || call.tool_status?.code || 'Not reported'}
                   </TableCell>
                   <TableCell className="whitespace-nowrap">{duration(call.execution_ms)}</TableCell>
-                  <TableCell>{call.result_summary || '未采集'}</TableCell>
+                  <TableCell>{call.result_summary || 'Not collected'}</TableCell>
                 </TableRow>
                 {expanded === call.tool_call_id && (
                   <TableRow>
@@ -564,7 +585,7 @@ function ToolDetailPage({
           </TableBody>
         </Table>
         {calls.data?.total === 0 && (
-          <p className="py-6 text-center text-muted-foreground">没有匹配的调用记录</p>
+          <p className="py-6 text-center text-muted-foreground">No matching calls</p>
         )}
         <Pagination
           total={calls.data?.total || 0}
@@ -576,30 +597,34 @@ function ToolDetailPage({
         />
       </section>
       <details>
-        <summary className="cursor-pointer text-sm">更多指标与统计口径</summary>
+        <summary className="cursor-pointer text-sm">More Metrics and Definitions</summary>
         <dl className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
           {[
-            ['结果未知', number(data.summary.unknown_count)],
-            ['可信终态覆盖率', percent(data.summary.terminal_status_coverage)],
-            ['执行耗时样本数', number(data.summary.execution_sample_count)],
-            ['平均执行耗时', duration(data.summary.execution_avg_ms)],
-            ['显式重试调用', number(data.summary.observed_retry_call_count)],
+            ['Unknown Outcomes', number(data.summary.unknown_count)],
+            ['Terminal Status Coverage', percent(data.summary.terminal_status_coverage)],
+            ['Execution Time Samples', number(data.summary.execution_sample_count)],
+            ['Average Execution Time', duration(data.summary.execution_avg_ms)],
+            ['Calls with Observed Retries', number(data.summary.observed_retry_call_count)],
             [
-              '重试测量覆盖',
-              `${data.summary.retry_covered_call_count} / ${data.summary.request_count} 次调用`,
+              'Retry Measurement Coverage',
+              `${data.summary.retry_covered_call_count} / ${data.summary.request_count} calls`,
             ],
-            ['重复候选', number(data.summary.duplicate_candidate_count)],
-            ['模型回传中位长度', number(data.summary.model_return_median_chars) + ' 字符'],
-            ['结果截断比例', percent(data.summary.truncation_rate)],
+            ['Duplicate Candidates', number(data.summary.duplicate_candidate_count)],
+            [
+              'Median Model Return Length',
+              number(data.summary.model_return_median_chars) + ' chars',
+            ],
+            ['Result Truncation Rate', percent(data.summary.truncation_rate)],
           ].map(([label, value]) => (
             <div key={label}>
-              {label}：{value}
+              {label}: {value}
             </div>
           ))}
         </dl>
         <p className="mt-3 text-xs text-muted-foreground">
-          成功率只统计有可信结果的已执行调用。耗时仅使用完整尝试测量；未知与未采集不填
-          0。搜索和调用状态筛选不改变上方汇总。
+          Success rate includes only executed calls with known outcomes. Execution time uses
+          complete attempt measurements; unknown and missing values are not treated as zero. Search
+          and call status filters do not change the summaries above.
         </p>
       </details>
     </div>
@@ -712,14 +737,14 @@ export function ToolAnalysis({ source, toolKey }: { source?: string; toolKey?: s
         {(
           [
             ['Agent', agent, setAgent, choices.data?.agents],
-            ['模型', model, setModel, choices.data?.models],
-            ...(!source ? [['类型', type, setType, choices.data?.types] as const] : []),
+            ['Model', model, setModel, choices.data?.models],
+            ...(!source ? [['Type', type, setType, choices.data?.types] as const] : []),
           ] as const
         ).map(([label, value, setValue, options]) => (
           <label key={label} className="text-sm">
             {label}{' '}
             <select
-              aria-label={`${label}筛选`}
+              aria-label={`Filter by ${label}`}
               className={selectStyle}
               value={value}
               onChange={(event) => {
@@ -727,7 +752,7 @@ export function ToolAnalysis({ source, toolKey }: { source?: string; toolKey?: s
                 setOffset(0);
               }}
             >
-              <option value="">全部</option>
+              <option value="">All</option>
               {options?.map((option) => (
                 <option key={option.value} value={option.value}>
                   {option.label || option.value}
@@ -744,13 +769,13 @@ export function ToolAnalysis({ source, toolKey }: { source?: string; toolKey?: s
             setOffset(0);
           }}
         >
-          刷新
+          Refresh
         </Button>
       </div>
       {!rangeValid ? (
-        <p role="alert">请选择不超过 30 天的时间范围</p>
+        <p role="alert">Select a time range of up to 30 days</p>
       ) : !project ? (
-        <p>请选择项目</p>
+        <p>Select a project</p>
       ) : source && toolKey ? (
         <ToolDetailPage
           key={JSON.stringify([project, source, toolKey, filters, refresh])}
@@ -761,18 +786,18 @@ export function ToolAnalysis({ source, toolKey }: { source?: string; toolKey?: s
         />
       ) : (
         <>
-          <h1 className="text-2xl font-medium">Tool Analysis / 工具分析</h1>
+          <h1 className="text-2xl font-medium">Tool Analysis</h1>
           <div className="flex flex-wrap gap-3">
             <Input
               className="max-w-sm"
-              aria-label="搜索工具"
-              placeholder="搜索工具名或定义 ID"
+              aria-label="Search tools"
+              placeholder="Search by tool name or definition ID"
               value={listInput}
               onChange={(event) => setListInput(event.target.value)}
               maxLength={256}
             />
             <select
-              aria-label="工具排序"
+              aria-label="Sort tools"
               className={selectStyle}
               value={sort}
               onChange={(event) => {
@@ -780,23 +805,23 @@ export function ToolAnalysis({ source, toolKey }: { source?: string; toolKey?: s
                 setOffset(0);
               }}
             >
-              <option value="request_count">请求次数最多</option>
-              <option value="known_success_rate">成功率最低</option>
-              <option value="execution_p95_ms">执行 P95 最长</option>
+              <option value="request_count">Most requests</option>
+              <option value="known_success_rate">Lowest success rate</option>
+              <option value="execution_p95_ms">Longest P95 execution time</option>
             </select>
           </div>
-          {query.isLoading && <p role="status">正在读取工具列表…</p>}
-          {query.error && <p role="alert">工具列表读取失败：{query.error.message}</p>}
+          {query.isLoading && <p role="status">Loading tools…</p>}
+          {query.error && <p role="alert">Failed to load tools: {query.error.message}</p>}
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>工具</TableHead>
-                <TableHead>请求 / 已执行</TableHead>
-                <TableHead>已知结果成功率</TableHead>
-                <TableHead>拒绝 / 失败</TableHead>
-                <TableHead>执行耗时</TableHead>
-                <TableHead>显式重试</TableHead>
-                <TableHead>回传中位长度</TableHead>
+                <TableHead>Tool</TableHead>
+                <TableHead>Requests / Executed</TableHead>
+                <TableHead>Success Rate (Known Outcomes)</TableHead>
+                <TableHead>Rejected / Failed</TableHead>
+                <TableHead>Execution Time</TableHead>
+                <TableHead>Observed Retries</TableHead>
+                <TableHead>Median Return Length</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -815,38 +840,38 @@ export function ToolAnalysis({ source, toolKey }: { source?: string; toolKey?: s
                   </TableCell>
                   <TableCell>
                     {item.request_count} / {item.executed_call_count}
-                    <div className="text-xs text-muted-foreground">
-                      使用 Agent {item.agent_count}
-                    </div>
+                    <div className="text-xs text-muted-foreground">Agents: {item.agent_count}</div>
                   </TableCell>
                   <TableCell>
                     {percent(item.known_success_rate)}
                     <div className="text-xs text-muted-foreground">
-                      未知 {item.unknown_count} · 覆盖 {percent(item.terminal_status_coverage)}
+                      Unknown: {item.unknown_count} · Coverage:{' '}
+                      {percent(item.terminal_status_coverage)}
                     </div>
                   </TableCell>
                   <TableCell>
-                    参数 {item.validation_rejected_count} · 权限 {item.authorization_rejected_count}
+                    Validation: {item.validation_rejected_count} · Authorization:{' '}
+                    {item.authorization_rejected_count}
                     <div className="text-xs text-muted-foreground">
-                      执行失败 {item.execution_failure_count}
+                      Failed: {item.execution_failure_count}
                     </div>
                   </TableCell>
                   <TableCell className="whitespace-nowrap">
-                    均值 {duration(item.execution_avg_ms)}
+                    Average: {duration(item.execution_avg_ms)}
                     <div className="text-xs text-muted-foreground">
                       P95 {duration(item.execution_p95_ms)}
                     </div>
                   </TableCell>
                   <TableCell>
-                    已观察 {item.observed_retry_call_count}
+                    Observed: {item.observed_retry_call_count}
                     <div className="text-xs text-muted-foreground">
-                      覆盖 {item.retry_covered_call_count} / {item.request_count}
+                      Coverage: {item.retry_covered_call_count} / {item.request_count}
                     </div>
                   </TableCell>
                   <TableCell>
-                    {number(item.model_return_median_chars)} 字符
+                    {number(item.model_return_median_chars)} chars
                     <div className="text-xs text-muted-foreground">
-                      截断 {percent(item.truncation_rate)}
+                      Truncated: {percent(item.truncation_rate)}
                     </div>
                   </TableCell>
                 </TableRow>
@@ -854,7 +879,7 @@ export function ToolAnalysis({ source, toolKey }: { source?: string; toolKey?: s
             </TableBody>
           </Table>
           {query.data?.total === 0 && (
-            <p className="py-8 text-center text-muted-foreground">当前范围无数据</p>
+            <p className="py-8 text-center text-muted-foreground">No data in this scope</p>
           )}
           <Pagination total={query.data?.total || 0} offset={offset} setOffset={setOffset} />
         </>

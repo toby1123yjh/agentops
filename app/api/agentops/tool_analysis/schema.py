@@ -13,22 +13,22 @@ BIGINT_MAX = 9223372036854775807
 ACTIVE_STATES = {'requested', 'awaiting_approval', 'queued', 'running'}
 
 LIFECYCLES = {
-    'requested': '已请求',
-    'awaiting_approval': '待审批',
-    'queued': '排队中',
-    'running': '执行中',
-    'completed': '已结束',
-    'rejected': '已拒绝',
-    'cancelled': '已取消',
-    'interrupted': '已中断',
+    'requested': 'Requested',
+    'awaiting_approval': 'Awaiting Approval',
+    'queued': 'Queued',
+    'running': 'Running',
+    'completed': 'Completed',
+    'rejected': 'Rejected',
+    'cancelled': 'Cancelled',
+    'interrupted': 'Interrupted',
 }
 OUTCOMES = {
-    'pending': '待完成',
-    'success': '成功',
-    'failure': '失败',
-    'rejected': '拒绝',
-    'cancelled': '取消',
-    'unknown': '未知',
+    'pending': 'Pending',
+    'success': 'Success',
+    'failure': 'Failure',
+    'rejected': 'Rejected',
+    'cancelled': 'Cancelled',
+    'unknown': 'Unknown',
 }
 TRANSITIONS = {
     'requested': ['awaiting_approval', 'queued', 'running', 'rejected', 'cancelled', 'interrupted'],

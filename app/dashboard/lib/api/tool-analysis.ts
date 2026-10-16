@@ -1,13 +1,17 @@
 import { fetchAuthenticatedApi } from '@/lib/api-client';
 
 export const callSearchFields = [
-  { key: 'tool_call_id', label: '调用 ID', placeholder: '输入完整 Tool Call ID（精确匹配）' },
-  { key: 'session_id', label: 'Session ID', placeholder: '输入完整 Session ID（精确匹配）' },
-  { key: 'turn_id', label: 'Turn ID', placeholder: '输入完整 Turn ID（精确匹配）' },
-  { key: 'session_title', label: '会话标题', placeholder: '输入会话标题关键词' },
-  { key: 'turn_input_preview', label: '本轮输入', placeholder: '输入本轮输入中的关键词' },
-  { key: 'agent_name', label: 'Agent 名称', placeholder: '输入 Agent 名称关键词' },
-  { key: 'result_summary', label: '结果摘要', placeholder: '输入结果摘要关键词' },
+  {
+    key: 'tool_call_id',
+    label: 'Tool Call ID',
+    placeholder: 'Enter a full Tool Call ID (exact match)',
+  },
+  { key: 'session_id', label: 'Session ID', placeholder: 'Enter a full Session ID (exact match)' },
+  { key: 'turn_id', label: 'Turn ID', placeholder: 'Enter a full Turn ID (exact match)' },
+  { key: 'session_title', label: 'Session Title', placeholder: 'Search session titles' },
+  { key: 'turn_input_preview', label: 'Turn Input', placeholder: 'Search turn inputs' },
+  { key: 'agent_name', label: 'Agent Name', placeholder: 'Search agent names' },
+  { key: 'result_summary', label: 'Result Summary', placeholder: 'Search result summaries' },
 ] as const;
 
 export interface Summary {
